@@ -1,137 +1,158 @@
-# 🚗 Ενοικιάσεις Πειραιάς - Ψηφιακά Συμβόλαια
+# Ενοικιάσεις Πειραιάς 🚗
 
-Εφαρμογή για τη διαχείριση ψηφιακών συμβολαίων ενοικίασης αυτοκινήτων με επισήμανση ζημιών και φωτογραφίες.
+**Professional Contract Management App for Vehicle Rentals**
 
-## ✨ Χαρακτηριστικά
+A comprehensive React Native application built with Expo for managing vehicle rental contracts in Piraeus, Greece.
 
-- **Δημιουργία Συμβολαίων**: Καταγραφή στοιχείων ενοικιαστή και οχήματος
-- **Επισήμανση Ζημιών**: Διαδραστικό διάγραμμα αυτοκινήτου για σήμανση ζημιών
-- **Λήψη Φωτογραφιών**: Ενσωματωμένη κάμερα για φωτογράφιση του οχήματος
-- **Οργανωμένη Αποθήκευση**: Αυτόματη δημιουργία φακέλων με όνομα ενοικιαστή και ημερομηνίες
-- **Δύο Τύποι Συμβολαίων**: Παραλαβή και Επιστροφή
-- **Ιστορικό**: Προβολή όλων των συμβολαίων
+## 🌟 Features
 
-## 📁 Δομή Αρχείων
+### 📋 Contract Management
+- **Create & Edit Contracts**: Complete rental agreement management
+- **Digital Signatures**: Capture signatures from both parties
+- **PDF Generation**: Professional contract documents with embedded signatures
+- **Contract History**: Track and search all rental agreements
 
-Τα συμβόλαια αποθηκεύονται με την εξής δομή:
+### 👤 User Management
+- **Multiple Users**: Support for different managers
+- **Individual Signatures**: Personal signature for each user
+- **User Profiles**: Complete user information management
 
-```
-contracts/
-└── Nikos_Papadopoulos_01-10-2025_to_08-10-2025/
-    ├── Συμβολαιο_Παραλαβη_Nikos_Papadopoulos_01-10-2025_10-30.json
-    └── photos/
-        ├── photo_1_1697024400000.jpg
-        ├── photo_2_1697024401000.jpg
-        └── photo_3_1697024402000.jpg
-```
+### 📸 Vehicle Documentation
+- **Interactive Car Diagram**: Mark damage locations visually
+- **Photo Capture**: Document vehicle condition with photos
+- **Damage Tracking**: Comprehensive damage documentation
 
-## 🚀 Εγκατάσταση και Εκτέλεση
+### 📄 Professional Output
+- **PDF Contracts**: Legal-compliant document generation
+- **Embedded Signatures**: Digital signatures in PDFs
+- **Professional Formatting**: Clean, business-ready documents
 
-### Προαπαιτούμενα
+## 🚀 Technology Stack
 
-- Node.js (έκδοση 18 ή νεότερη)
-- npm ή yarn
-- Expo Go app στο κινητό σας (για δοκιμή)
+- **React Native** with Expo SDK 54
+- **TypeScript** for type safety
+- **Expo Router** for navigation
+- **React Native SVG** for signature capture
+- **Expo FileSystem** for local storage
+- **Expo Print** for PDF generation
+- **React Native Safe Area Context** for proper layouts
 
-### Εγκατάσταση
+## 📱 Screenshots
 
-Οι εξαρτήσεις έχουν ήδη εγκατασταθεί! Απλά τρέξτε:
+*Screenshots will be added after deployment*
 
-```bash
-npm start
-```
+## 🛠️ Installation & Setup
 
-### Εκτέλεση σε Διάφορες Πλατφόρμες
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator or Android Emulator (optional)
 
-```bash
-# Εκτέλεση στο web browser
-npm run web
+### Local Development
 
-# Εκτέλεση σε Android emulator ή συσκευή
-npm run android
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/fotisconctacts.git
+   cd fotisconctacts
+   ```
 
-# Εκτέλεση σε iOS simulator (μόνο σε macOS)
-npm run ios
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## 📱 Χρήση της Εφαρμογής
+3. **Start the development server**
+   ```bash
+   npx expo start
+   ```
 
-### 1. Δημιουργία Νέου Συμβολαίου
+4. **Run on device/simulator**
+   - Scan QR code with Expo Go app
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
 
-1. Πατήστε το κουμπί **"➕ Νέο Συμβόλαιο"**
-2. Επιλέξτε τον τύπο συμβολαίου (Παραλαβή ή Επιστροφή)
-3. Συμπληρώστε τα στοιχεία ενοικιαστή (υποχρεωτικά: ονοματεπώνυμο, τηλέφωνο)
-4. Συμπληρώστε τα στοιχεία οχήματος (υποχρεωτικό: πινακίδα)
+## 📦 Deployment
 
-### 2. Επισήμανση Ζημιών
+### Expo Snack (Quick Demo)
+- Visit [snack.expo.dev](https://snack.expo.dev)
+- Import project files
+- Share instantly
 
-- Πατήστε στο διάγραμμα του αυτοκινήτου για να σημειώσετε ζημιές
-- Κάθε κόκκινη κουκίδα αντιπροσωπεύει μια ζημιά
-- Μπορείτε να καθαρίσετε όλες τις επισημάνσεις με το κουμπί "🗑️ Καθαρισμός Ζημιών"
+### App Stores (Production)
+- Configure EAS Build
+- Build for iOS/Android
+- Submit to App Store/Google Play
 
-### 3. Προσθήκη Φωτογραφιών
+## 🎯 Key Features Working
 
-- Πατήστε **"📷 Προσθήκη Φωτογραφίας"**
-- Επιτρέψτε την πρόσβαση στην κάμερα όταν ζητηθεί
-- Τραβήξτε φωτογραφία με το κουμπί **"Λήψη"**
-- Επαναλάβετε για περισσότερες φωτογραφίες
+✅ **Signature Capture**: Perfect signature drawing and preview  
+✅ **Contract Management**: Complete CRUD operations  
+✅ **PDF Generation**: Professional document creation  
+✅ **User Management**: Multi-user support  
+✅ **Vehicle Documentation**: Interactive car diagram  
+✅ **Local Storage**: Secure data persistence  
 
-### 4. Αποθήκευση
-
-- Πατήστε **"💾 Αποθήκευση Συμβολαίου"**
-- Το συμβόλαιο και οι φωτογραφίες θα αποθηκευτούν αυτόματα
-- Θα εμφανιστεί μήνυμα επιτυχίας με τη θέση του φακέλου
-
-## 🗂️ Δομή Έργου
+## 📋 Project Structure
 
 ```
 fotisconctacts/
-├── app/                          # Οθόνες εφαρμογής
-│   ├── _layout.tsx              # Root layout με navigation
-│   ├── index.tsx                # Αρχική οθόνη με λίστα συμβολαίων
-│   └── new-contract.tsx         # Οθόνη δημιουργίας συμβολαίου
-├── components/                   # Επαναχρησιμοποιήσιμα components
-│   ├── car-diagram.tsx          # Διαδραστικό διάγραμμα αυτοκινήτου
-│   └── photo-capture.tsx        # Component λήψης φωτογραφιών
-├── models/                       # TypeScript interfaces
-│   ├── contract.interface.ts    # Τύποι για συμβόλαια
-│   └── damage.interface.ts      # Τύποι για ζημιές
-├── services/                     # Business logic
-│   └── contract-storage.service.ts  # Διαχείριση αποθήκευσης
-├── utils/                        # Βοηθητικές συναρτήσεις
-│   └── file-naming.util.ts      # Ονοματοδοσία αρχείων
-└── assets/                       # Εικόνες και resources
-
+├── app/                    # Main app screens
+│   ├── _layout.tsx        # Root layout
+│   ├── index.tsx          # Contract list
+│   ├── new-contract.tsx   # Create contract
+│   ├── contract-details.tsx # View contract
+│   ├── edit-contract.tsx  # Edit contract
+│   └── user-management.tsx # User management
+├── components/            # Reusable components
+│   ├── signature-pad.tsx # Signature capture
+│   ├── car-diagram.tsx   # Vehicle diagram
+│   ├── image-modal.tsx   # Image display
+│   └── photo-capture.tsx # Photo capture
+├── services/             # Business logic
+│   ├── contract-storage.service.ts
+│   ├── user-storage.service.ts
+│   └── pdf-generation.service.ts
+├── models/               # TypeScript interfaces
+│   ├── contract.interface.ts
+│   └── damage.interface.ts
+├── utils/                # Utility functions
+│   ├── date-conversion.util.ts
+│   └── file-naming.util.ts
+└── assets/               # Images and icons
 ```
 
-## 🔧 Τεχνολογίες
+## 🔧 Configuration
 
-- **React Native** με **Expo**
-- **TypeScript** για type safety
-- **Expo Router** για navigation
-- **Expo Camera** για λήψη φωτογραφιών
-- **Expo File System** για αποθήκευση αρχείων
-- **React Native SVG** για το διάγραμμα αυτοκινήτου
-- **date-fns** για μορφοποίηση ημερομηνιών
+### App Configuration (`app.json`)
+- **Bundle ID**: `com.fotis.contracts`
+- **Project ID**: `fotisconctacts-2024`
+- **Platforms**: iOS, Android, Web
 
-## 📄 Άδεια
+### EAS Build (`eas.json`)
+- Production builds configured
+- App store deployment ready
 
-Αυτό το έργο δημιουργήθηκε για την εταιρεία ενοικίασης αυτοκινήτων στον Πειραιά.
+## 📄 Documentation
 
-## 🆘 Υποστήριξη
+- [Privacy Policy](PRIVACY_POLICY.md)
+- [App Store Description](APP_STORE_DESCRIPTION.md)
+- [Deployment Checklist](DEPLOYMENT_CHECKLIST.md)
 
-Για βοήθεια ή προβλήματα, επικοινωνήστε με τον προγραμματιστή.
+## 🤝 Contributing
 
-## 🔄 Μελλοντικές Βελτιώσεις
+This is a private project for vehicle rental management in Piraeus, Greece.
 
-- Εξαγωγή συμβολαίων σε PDF
-- Αναζήτηση και φιλτράρισμα συμβολαίων
-- Email αποστολή συμβολαίων
-- Cloud backup
-- Υπογραφές ενοικιαστή
-- Πολλαπλά μοντέλα αυτοκινήτων (sedan, SUV, van)
+## 📞 Support
+
+For support or questions about this application, please contact:
+- **Email**: support@fotiscontracts.com
+- **Phone**: +30 XXX XXX XXXX
+
+## 📄 License
+
+This project is proprietary software for vehicle rental management.
 
 ---
 
-Καλή χρήση! 🚗💨
-
+**Built with ❤️ for the vehicle rental industry in Piraeus, Greece**
