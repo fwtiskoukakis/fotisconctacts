@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "Ενοικιάσεις Πειραιάς",
+    "slug": "fotisconctacts",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "fotisconctacts",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#007AFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fotis.contracts",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Χρειαζόμαστε πρόσβαση στην κάμερα για να βγάλετε φωτογραφίες του οχήματος",
+        "NSPhotoLibraryUsageDescription": "Χρειαζόμαστε πρόσβαση στη βιβλιοθήκη φωτογραφιών για να αποθηκεύσουμε τις φωτογραφίες του οχήματος",
+        "NSPhotoLibraryAddUsageDescription": "Χρειαζόμαστε πρόσβαση για να αποθηκεύσουμε τις φωτογραφίες του οχήματος"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#007AFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fotis.contracts",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Επιτρέψτε στην εφαρμογή να έχει πρόσβαση στην κάμερα σας για να βγάλετε φωτογραφίες του οχήματος"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Επιτρέψτε στην εφαρμογή να έχει πρόσβαση στη βιβλιοθήκη φωτογραφιών για να αποθηκεύσει φωτογραφίες του οχήματος",
+          "savePhotosPermission": "Επιτρέψτε στην εφαρμογή να αποθηκεύει φωτογραφίες στη βιβλιοθήκη σας",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "fotisconctacts-2024"
+      }
+    }
+  }
+}
