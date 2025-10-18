@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
   Modal,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { AuthService } from '../../services/auth.service';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../../utils/design-system';
+
+const { width, height } = Dimensions.get('window');
 
 /**
- * Sign In Screen
+ * Professional Business Sign In Screen
  */
 export default function SignInScreen() {
   const router = useRouter();
@@ -27,6 +31,23 @@ export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   async function handleSignIn() {
     if (!email.trim() || !password.trim()) {
@@ -60,7 +81,7 @@ export default function SignInScreen() {
   }
 
   function handleForgotPassword() {
-    setResetEmail(email); // Pre-fill with current email
+    setResetEmail(email);
     setShowForgotPassword(true);
   }
 
@@ -94,97 +115,153 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>AGGELOS RENTALS</Text>
-            <Text style={styles.subtitle}>Σύστημα Διαχείρισης Ενοικιάσεων</Text>
+          {/* Background Decorative Elements */}
+          <View style={styles.backgroundPattern}>
+            <View style={styles.circle1} />
+            <View style={styles.circle2} />
+            <View style={styles.circle3} />
           </View>
 
-          {/* Sign In Form */}
-          <View style={styles.formContainer}>
-            <Text style={styles.formTitle}>Σύνδεση</Text>
+          {/* Header Section */}
+          <Animated.View 
+            style={[
+              styles.header,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={[styles.logoContainer, Glassmorphism.medium]}>
+              <Text style={styles.logoText}>FC</Text>
+            </View>
+            <Text style={styles.appTitle}>Fotis Contacts</Text>
+            <Text style={styles.appSubtitle}>Σύστημα Διαχείρισης Ενοικιάσεων Αυτοκινήτων</Text>
+            <Text style={styles.welcomeText}>Καλώς ήρθατε! Συνδεθείτε για να συνεχίσετε</Text>
+          </Animated.View>
 
+          {/* Login Form */}
+          <Animated.View 
+            style={[
+              styles.formContainer,
+              Glassmorphism.medium,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <Text style={styles.formTitle}>Σύνδεση Χρήστη</Text>
+            <Text style={styles.formSubtitle}>Εισάγετε τα στοιχεία σας</Text>
+
+            {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="example@email.com"
-                placeholderTextColor="#999"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={!isLoading}
-              />
+              <View style={[styles.inputContainer, Glassmorphism.light]}>
+                <Text style={styles.inputIcon}>📧</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="example@email.com"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!isLoading}
+                />
+              </View>
             </View>
 
+            {/* Password Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Κωδικός</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Εισάγετε τον κωδικό σας"
-                placeholderTextColor="#999"
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password"
-                editable={!isLoading}
-              />
+              <Text style={styles.label}>Κωδικός Πρόσβασης</Text>
+              <View style={[styles.inputContainer, Glassmorphism.light]}>
+                <Text style={styles.inputIcon}>🔒</Text>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Εισάγετε τον κωδικό σας"
+                  placeholderTextColor={Colors.textSecondary}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  editable={!isLoading}
+                />
+              </View>
             </View>
 
+            {/* Forgot Password Link */}
             <TouchableOpacity
               onPress={handleForgotPassword}
               disabled={isLoading}
+              style={styles.forgotPasswordContainer}
             >
               <Text style={styles.forgotPassword}>
                 Ξεχάσατε τον κωδικό σας;
               </Text>
             </TouchableOpacity>
 
+            {/* Sign In Button */}
             <TouchableOpacity
               style={[styles.signInButton, isLoading && styles.buttonDisabled]}
               onPress={handleSignIn}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.signInButtonText}>Σύνδεση</Text>
+                <View style={styles.buttonContent}>
+                  <Text style={styles.signInButtonText}>Σύνδεση</Text>
+                  <Text style={styles.signInButtonIcon}>→</Text>
+                </View>
               )}
             </TouchableOpacity>
 
+            {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ή</Text>
               <View style={styles.dividerLine} />
             </View>
 
+            {/* Sign Up Link */}
             <TouchableOpacity
-              style={styles.signUpButton}
+              style={[styles.signUpButton, Glassmorphism.light]}
               onPress={() => router.push('/auth/sign-up')}
               disabled={isLoading}
             >
               <Text style={styles.signUpButtonText}>
-                Δημιουργία Νέου Λογαριασμού
+                Δεν έχετε λογαριασμό; <Text style={styles.signUpButtonTextBold}>Εγγραφείτε</Text>
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
+
+          {/* Footer */}
+          <Animated.View 
+            style={[
+              styles.footer,
+              {
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            <Text style={styles.footerText}>
+              © 2024 Fotis Contacts. Όλα τα δικαιώματα διατηρούνται.
+            </Text>
+            <Text style={styles.versionText}>Έκδοση 1.0.0</Text>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -192,50 +269,42 @@ export default function SignInScreen() {
       <Modal
         visible={showForgotPassword}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowForgotPassword(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Ανάκτηση Κωδικού</Text>
-            <Text style={styles.modalSubtitle}>
-              Εισάγετε το email σας για να λάβετε οδηγίες ανάκτησης
+          <View style={[styles.modalContent, Glassmorphism.medium]}>
+            <Text style={styles.modalTitle}>Επαναφορά Κωδικού</Text>
+            <Text style={styles.modalDescription}>
+              Εισάγετε το email σας και θα σας στείλουμε οδηγίες για την επαναφορά του κωδικού σας.
             </Text>
+            
+            <View style={[styles.modalInputContainer, Glassmorphism.light]}>
+              <Text style={styles.modalInputIcon}>📧</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                placeholder="Email"
+                placeholderTextColor={Colors.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
 
-            <TextInput
-              style={styles.modalInput}
-              value={resetEmail}
-              onChangeText={setResetEmail}
-              placeholder="example@email.com"
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              editable={!isLoading}
-            />
-
-            <View style={styles.modalButtons}>
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => {
-                  setShowForgotPassword(false);
-                  setResetEmail('');
-                }}
-                disabled={isLoading}
+                style={[styles.modalCancelButton, Glassmorphism.light]}
+                onPress={() => setShowForgotPassword(false)}
               >
-                <Text style={styles.modalButtonTextCancel}>Ακύρωση</Text>
+                <Text style={styles.modalCancelText}>Ακύρωση</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
+                style={styles.modalSendButton}
                 onPress={handleSendResetEmail}
-                disabled={isLoading}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalButtonTextConfirm}>Αποστολή</Text>
-                )}
+                <Text style={styles.modalSendText}>Αποστολή</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -248,193 +317,299 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: Colors.background,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  circle1: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: Colors.primary,
+    opacity: 0.05,
+    top: -100,
+    right: -100,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: Colors.secondary,
+    opacity: 0.05,
+    bottom: -50,
+    left: -50,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: Colors.info,
+    opacity: 0.05,
+    top: height * 0.4,
+    right: -30,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    marginTop: Spacing.xxl,
   },
   logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 30,
+    marginBottom: Spacing.lg,
+    ...Shadows.lg,
   },
-  logo: {
-    width: 200,
-    height: 80,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
+  logoText: {
+    fontSize: 40,
     fontWeight: 'bold',
-    color: '#1e3a5f',
-    marginBottom: 8,
+    color: '#FFFFFF',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  formTitle: {
-    fontSize: 20,
+  appTitle: {
+    ...Typography.h1,
+    color: Colors.text,
     fontWeight: 'bold',
-    color: '#1e3a5f',
-    marginBottom: 24,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
   },
+  appSubtitle: {
+    ...Typography.bodyMedium,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  welcomeText: {
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  formContainer: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+    ...Shadows.lg,
+  },
+  formTitle: {
+    ...Typography.h2,
+    color: Colors.text,
+    fontWeight: 'bold',
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
+  formSubtitle: {
+    ...Typography.bodyMedium,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: Spacing.lg,
   },
   label: {
-    fontSize: 14,
+    ...Typography.bodyMedium,
+    color: Colors.text,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    ...Shadows.sm,
+  },
+  inputIcon: {
+    fontSize: 20,
+    marginRight: Spacing.sm,
   },
   input: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1f2937',
+    flex: 1,
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    paddingVertical: Spacing.md,
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginBottom: Spacing.lg,
   },
   forgotPassword: {
-    fontSize: 14,
-    color: '#3b82f6',
-    textAlign: 'right',
-    marginBottom: 24,
+    ...Typography.bodySmall,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   signInButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 10,
-    paddingVertical: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
   },
   buttonDisabled: {
-    backgroundColor: '#9ca3af',
+    opacity: 0.6,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   signInButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Typography.bodyLarge,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    marginRight: Spacing.sm,
+  },
+  signInButtonIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: Spacing.lg,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: Colors.border,
   },
   dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#9ca3af',
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
+    marginHorizontal: Spacing.md,
   },
   signUpButton: {
-    borderWidth: 2,
-    borderColor: '#3b82f6',
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   signUpButtonText: {
-    color: '#3b82f6',
-    fontSize: 16,
-    fontWeight: '600',
+    ...Typography.bodyMedium,
+    color: Colors.textSecondary,
   },
-  // Modal styles
+  signUpButtonTextBold: {
+    color: Colors.primary,
+    fontWeight: 'bold',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  footerText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
+  },
+  versionText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    opacity: 0.6,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: Spacing.lg,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    ...Shadows.lg,
   },
   modalTitle: {
-    fontSize: 20,
+    ...Typography.h3,
+    color: Colors.text,
     fontWeight: 'bold',
-    color: '#1e3a5f',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
+  modalDescription: {
+    ...Typography.bodyMedium,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    marginBottom: Spacing.xl,
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  modalInputIcon: {
+    fontSize: 20,
+    marginRight: Spacing.sm,
   },
   modalInput: {
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1f2937',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 14,
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    paddingVertical: Spacing.md,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: '#f3f4f6',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: Colors.borderLight,
   },
-  modalButtonConfirm: {
-    backgroundColor: '#3b82f6',
-  },
-  modalButtonTextCancel: {
-    color: '#374151',
-    fontSize: 16,
+  modalCancelText: {
+    ...Typography.bodyMedium,
+    color: Colors.text,
     fontWeight: '600',
   },
-  modalButtonTextConfirm: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  modalSendButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    ...Shadows.sm,
+  },
+  modalSendText: {
+    ...Typography.bodyMedium,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });
-
