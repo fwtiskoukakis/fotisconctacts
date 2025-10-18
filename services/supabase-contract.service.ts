@@ -1,237 +1,102 @@
 import { supabase } from '../utils/supabase';
-import { Contract, DamagePoint } from '../models/contract.interface';
-import { Database } from '../models/database.types';
+import { Contract } from '../models/contract.interface';
 
-type ContractRow = Database['public']['Tables']['contracts']['Row'];
-type ContractInsert = Database['public']['Tables']['contracts']['Insert'];
-type DamagePointRow = Database['public']['Tables']['damage_points']['Row'];
-type PhotoRow = Database['public']['Tables']['photos']['Row'];
+export interface SupabaseContract {
+  id: string;
+  user_id: string;
+  renter_name: string;
+  renter_email?: string;
+  renter_phone?: string;
+  renter_address?: string;
+  renter_id_number?: string;
+  renter_driving_license?: string;
+  pickup_date: string;
+  pickup_time: string;
+  pickup_location: string;
+  dropoff_date: string;
+  dropoff_time: string;
+  dropoff_location?: string;
+  total_cost: number;
+  car_make?: string;
+  car_model?: string;
+  car_license_plate?: string;
+  car_color?: string;
+  fuel_level: number;
+  mileage_start: number;
+  mileage_end?: number;
+  condition_notes?: string;
+  aade_dcl_id?: number;
+  aade_submitted_at?: string;
+  aade_updated_at?: string;
+  aade_invoice_mark?: string;
+  aade_status: 'pending' | 'submitted' | 'completed' | 'cancelled' | 'error';
+  aade_error_message?: string;
+  status: 'active' | 'completed' | 'cancelled';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
 
-/**
- * Service for managing contracts in Supabase
- */
+export interface SupabaseDamagePoint {
+  id: string;
+  contract_id: string;
+  location: string;
+  description?: string;
+  severity: 'minor' | 'major' | 'critical';
+  estimated_cost: number;
+  photo_url?: string;
+  created_at: string;
+}
+
+export interface SupabaseContractPhoto {
+  id: string;
+  contract_id: string;
+  photo_url: string;
+  photo_type: 'pickup' | 'dropoff' | 'damage' | 'general';
+  description?: string;
+  created_at: string;
+}
+
 export class SupabaseContractService {
-  /**
-   * Save a new contract to Supabase
-   */
-  static async saveContract(params: {
-    contract: Contract;
-    photoFiles?: Array<{ uri: string; fileName: string }>;
-  }): Promise<{ id: string | null; error: Error | null }> {
-    try {
-      const { contract, photoFiles = [] } = params;
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { id: null, error: new Error('User not authenticated') };
-      }
-
-      // Upload client signature if exists
-      let clientSignatureUrl: string | null = null;
-      if (contract.clientSignature) {
-        const signatureResult = await this.uploadSignature(
-          contract.clientSignature,
-          `clients/${contract.id}_client_signature.png`
-        );
-        if (signatureResult.error) {
-          console.error('Error uploading client signature:', signatureResult.error);
-        } else {
-          clientSignatureUrl = signatureResult.url;
-        }
-      }
-
-      // Insert contract
-      const contractData: ContractInsert = {
-        id: contract.id,
-        user_id: user.id,
-        renter_full_name: contract.renterInfo.fullName,
-        renter_id_number: contract.renterInfo.idNumber,
-        renter_tax_id: contract.renterInfo.taxId,
-        renter_driver_license_number: contract.renterInfo.driverLicenseNumber,
-        renter_phone_number: contract.renterInfo.phoneNumber,
-        renter_email: contract.renterInfo.email,
-        renter_address: contract.renterInfo.address,
-        pickup_date: contract.rentalPeriod.pickupDate.toISOString(),
-        pickup_time: contract.rentalPeriod.pickupTime,
-        pickup_location: contract.rentalPeriod.pickupLocation,
-        dropoff_date: contract.rentalPeriod.dropoffDate.toISOString(),
-        dropoff_time: contract.rentalPeriod.dropoffTime,
-        dropoff_location: contract.rentalPeriod.dropoffLocation,
-        is_different_dropoff_location: contract.rentalPeriod.isDifferentDropoffLocation,
-        total_cost: contract.rentalPeriod.totalCost,
-        car_make_model: contract.carInfo.makeModel,
-        car_year: contract.carInfo.year,
-        car_license_plate: contract.carInfo.licensePlate,
-        car_mileage: contract.carInfo.mileage,
-        fuel_level: contract.carCondition.fuelLevel,
-        insurance_type: contract.carCondition.insuranceType,
-        client_signature_url: clientSignatureUrl,
-      };
-
-      const { data: contractResult, error: contractError } = await supabase
-        .from('contracts')
-        .insert(contractData)
-        .select()
-        .single();
-
-      if (contractError) {
-        return { id: null, error: contractError };
-      }
-
-      // Insert damage points
-      if (contract.damagePoints.length > 0) {
-        const damagePointsData = contract.damagePoints.map((dp) => ({
-          contract_id: contract.id,
-          x_position: dp.x,
-          y_position: dp.y,
-          view_side: dp.view,
-          description: dp.description,
-          severity: dp.severity,
-        }));
-
-        const { error: damageError } = await supabase
-          .from('damage_points')
-          .insert(damagePointsData);
-
-        if (damageError) {
-          console.error('Error inserting damage points:', damageError);
-        }
-      }
-
-      // Upload and save photos
-      if (photoFiles.length > 0) {
-        await this.uploadContractPhotos(contract.id, photoFiles);
-      }
-
-      return { id: contractResult.id, error: null };
-    } catch (error) {
-      console.error('Error saving contract:', error);
-      return { id: null, error: error as Error };
-    }
-  }
-
-  /**
-   * Upload a signature to Supabase Storage
-   */
-  static async uploadSignature(
-    base64Data: string,
-    path: string
-  ): Promise<{ url: string | null; error: Error | null }> {
-    try {
-      // Convert base64 to blob
-      const response = await fetch(base64Data);
-      const blob = await response.blob();
-
-      const { data, error } = await supabase.storage
-        .from('signatures')
-        .upload(path, blob, {
-          contentType: 'image/png',
-          upsert: true,
-        });
-
-      if (error) {
-        return { url: null, error };
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('signatures')
-        .getPublicUrl(data.path);
-
-      return { url: urlData.publicUrl, error: null };
-    } catch (error) {
-      return { url: null, error: error as Error };
-    }
-  }
-
-  /**
-   * Upload contract photos to Supabase Storage
-   */
-  static async uploadContractPhotos(
-    contractId: string,
-    photoFiles: Array<{ uri: string; fileName: string }>
-  ): Promise<void> {
-    for (let i = 0; i < photoFiles.length; i++) {
-      const { uri, fileName } = photoFiles[i];
-      
-      try {
-        // Read file from URI
-        const response = await fetch(uri);
-        const blob = await response.blob();
-
-        const storagePath = `contracts/${contractId}/${fileName}`;
-
-        // Upload to storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('contract-photos')
-          .upload(storagePath, blob, {
-            contentType: 'image/jpeg',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error(`Error uploading photo ${i}:`, uploadError);
-          continue;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('contract-photos')
-          .getPublicUrl(uploadData.path);
-
-        // Save photo record to database
-        await supabase.from('photos').insert({
-          contract_id: contractId,
-          photo_url: urlData.publicUrl,
-          storage_path: storagePath,
-          order_index: i,
-          mime_type: 'image/jpeg',
-        });
-      } catch (error) {
-        console.error(`Error processing photo ${i}:`, error);
-      }
-    }
-  }
-
   /**
    * Get all contracts for the current user
    */
   static async getAllContracts(): Promise<Contract[]> {
     try {
-      const { data, error } = await supabase
+      const { data: contracts, error } = await supabase
         .from('contracts')
         .select(`
           *,
-          damage_points(*),
-          photos(*)
+          damage_points:damage_points(*),
+          contract_photos:contract_photos(*)
         `)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching contracts:', error);
-        return [];
+        throw error;
       }
 
-      return this.mapContractsFromDatabase(data);
+      return contracts?.map(this.mapSupabaseToContract) || [];
     } catch (error) {
-      console.error('Error getting contracts:', error);
-      return [];
+      console.error('Error in getAllContracts:', error);
+      throw error;
     }
   }
 
   /**
-   * Get a specific contract by ID
+   * Get a single contract by ID
    */
-  static async getContractById(contractId: string): Promise<Contract | null> {
+  static async getContractById(id: string): Promise<Contract | null> {
     try {
-      const { data, error } = await supabase
+      const { data: contract, error } = await supabase
         .from('contracts')
         .select(`
           *,
-          damage_points(*),
-          photos(*)
+          damage_points:damage_points(*),
+          contract_photos:contract_photos(*)
         `)
-        .eq('id', contractId)
+        .eq('id', id)
         .single();
 
       if (error) {
@@ -239,123 +104,287 @@ export class SupabaseContractService {
         return null;
       }
 
-      const contracts = this.mapContractsFromDatabase([data]);
-      return contracts[0] || null;
+      return this.mapSupabaseToContract(contract);
     } catch (error) {
-      console.error('Error getting contract:', error);
+      console.error('Error in getContractById:', error);
       return null;
     }
   }
 
   /**
-   * Search contracts by renter name or license plate
+   * Create a new contract
    */
-  static async searchContracts(query: string): Promise<Contract[]> {
+  static async createContract(contract: Omit<Contract, 'id'>): Promise<Contract> {
     try {
+      const supabaseContract = this.mapContractToSupabase(contract);
+      
       const { data, error } = await supabase
         .from('contracts')
-        .select(`
-          *,
-          damage_points(*),
-          photos(*)
-        `)
-        .or(
-          `renter_full_name.ilike.%${query}%,car_license_plate.ilike.%${query}%`
-        )
-        .order('created_at', { ascending: false });
+        .insert(supabaseContract)
+        .select()
+        .single();
 
       if (error) {
-        console.error('Error searching contracts:', error);
-        return [];
+        console.error('Error creating contract:', error);
+        throw error;
       }
 
-      return this.mapContractsFromDatabase(data);
+      // Create damage points if any
+      if (contract.damagePoints.length > 0) {
+        const damagePoints = contract.damagePoints.map(dp => ({
+          contract_id: data.id,
+          location: dp.location,
+          description: dp.description,
+          severity: dp.severity,
+          estimated_cost: dp.estimatedCost || 0,
+          photo_url: dp.photoUrl,
+        }));
+
+        await supabase
+          .from('damage_points')
+          .insert(damagePoints);
+      }
+
+      // Create photos if any
+      if (contract.photos && contract.photos.length > 0) {
+        const photos = contract.photos.map(photo => ({
+          contract_id: data.id,
+          photo_url: photo.url,
+          photo_type: photo.type || 'general',
+          description: photo.description,
+        }));
+
+        await supabase
+          .from('contract_photos')
+          .insert(photos);
+      }
+
+      return this.mapSupabaseToContract(data);
     } catch (error) {
-      console.error('Error searching contracts:', error);
-      return [];
+      console.error('Error in createContract:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing contract
+   */
+  static async updateContract(id: string, updates: Partial<Contract>): Promise<Contract> {
+    try {
+      const supabaseUpdates = this.mapContractToSupabase(updates as Contract);
+      
+      const { data, error } = await supabase
+        .from('contracts')
+        .update(supabaseUpdates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating contract:', error);
+        throw error;
+      }
+
+      return this.mapSupabaseToContract(data);
+    } catch (error) {
+      console.error('Error in updateContract:', error);
+      throw error;
     }
   }
 
   /**
    * Delete a contract
    */
-  static async deleteContract(contractId: string): Promise<{ error: Error | null }> {
+  static async deleteContract(id: string): Promise<void> {
     try {
-      // Delete photos from storage
-      const { data: photos } = await supabase
-        .from('photos')
-        .select('storage_path')
-        .eq('contract_id', contractId);
-
-      if (photos && photos.length > 0) {
-        const paths = photos.map((p) => p.storage_path);
-        await supabase.storage.from('contract-photos').remove(paths);
-      }
-
-      // Delete contract (cascade will handle damage_points and photos table)
       const { error } = await supabase
         .from('contracts')
         .delete()
-        .eq('id', contractId);
+        .eq('id', id);
 
-      return { error };
+      if (error) {
+        console.error('Error deleting contract:', error);
+        throw error;
+      }
     } catch (error) {
-      return { error: error as Error };
+      console.error('Error in deleteContract:', error);
+      throw error;
     }
   }
 
   /**
-   * Map database rows to Contract objects
+   * Search contracts
    */
-  private static mapContractsFromDatabase(data: any[]): Contract[] {
-    return data.map((row) => ({
-      id: row.id,
+  static async searchContracts(query: string): Promise<Contract[]> {
+    try {
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points:damage_points(*),
+          contract_photos:contract_photos(*)
+        `)
+        .or(`renter_name.ilike.%${query}%,car_license_plate.ilike.%${query}%,car_make.ilike.%${query}%,car_model.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error searching contracts:', error);
+        throw error;
+      }
+
+      return contracts?.map(this.mapSupabaseToContract) || [];
+    } catch (error) {
+      console.error('Error in searchContracts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get contracts by status
+   */
+  static async getContractsByStatus(status: 'active' | 'completed' | 'cancelled'): Promise<Contract[]> {
+    try {
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points:damage_points(*),
+          contract_photos:contract_photos(*)
+        `)
+        .eq('status', status)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching contracts by status:', error);
+        throw error;
+      }
+
+      return contracts?.map(this.mapSupabaseToContract) || [];
+    } catch (error) {
+      console.error('Error in getContractsByStatus:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Map Supabase contract to our Contract interface
+   */
+  private static mapSupabaseToContract(data: any): Contract {
+    return {
+      id: data.id,
       renterInfo: {
-        fullName: row.renter_full_name,
-        idNumber: row.renter_id_number,
-        taxId: row.renter_tax_id,
-        driverLicenseNumber: row.renter_driver_license_number,
-        phoneNumber: row.renter_phone_number,
-        email: row.renter_email || '',
-        address: row.renter_address,
+        fullName: data.renter_name,
+        email: data.renter_email || '',
+        phone: data.renter_phone || '',
+        address: data.renter_address || '',
+        idNumber: data.renter_id_number || '',
+        drivingLicense: data.renter_driving_license || '',
       },
       rentalPeriod: {
-        pickupDate: new Date(row.pickup_date),
-        pickupTime: row.pickup_time,
-        pickupLocation: row.pickup_location,
-        dropoffDate: new Date(row.dropoff_date),
-        dropoffTime: row.dropoff_time,
-        dropoffLocation: row.dropoff_location,
-        isDifferentDropoffLocation: row.is_different_dropoff_location,
-        totalCost: parseFloat(row.total_cost),
+        pickupDate: new Date(data.pickup_date),
+        pickupTime: data.pickup_time,
+        pickupLocation: data.pickup_location,
+        dropoffDate: new Date(data.dropoff_date),
+        dropoffTime: data.dropoff_time,
+        dropoffLocation: data.dropoff_location || '',
+        totalCost: data.total_cost || 0,
       },
       carInfo: {
-        makeModel: row.car_make_model,
-        year: row.car_year,
-        licensePlate: row.car_license_plate,
-        mileage: row.car_mileage,
+        make: data.car_make || '',
+        model: data.car_model || '',
+        makeModel: data.car_make && data.car_model ? `${data.car_make} ${data.car_model}` : '',
+        licensePlate: data.car_license_plate || '',
+        color: data.car_color || '',
       },
       carCondition: {
-        fuelLevel: row.fuel_level,
-        mileage: row.car_mileage,
-        insuranceType: row.insurance_type,
+        fuelLevel: data.fuel_level || 8,
+        mileageStart: data.mileage_start || 0,
+        mileageEnd: data.mileage_end,
+        conditionNotes: data.condition_notes || '',
       },
-      damagePoints: (row.damage_points || []).map((dp: any) => ({
+      damagePoints: data.damage_points?.map((dp: any) => ({
         id: dp.id,
-        x: parseFloat(dp.x_position),
-        y: parseFloat(dp.y_position),
-        view: dp.view_side,
-        description: dp.description,
+        location: dp.location,
+        description: dp.description || '',
         severity: dp.severity,
-        timestamp: new Date(dp.created_at),
-      })),
-      photoUris: (row.photos || [])
-        .sort((a: any, b: any) => a.order_index - b.order_index)
-        .map((p: any) => p.photo_url),
-      clientSignature: row.client_signature_url || '',
-      userId: row.user_id,
-      createdAt: new Date(row.created_at),
-    }));
+        estimatedCost: dp.estimated_cost || 0,
+        photoUrl: dp.photo_url || '',
+      })) || [],
+      photos: data.contract_photos?.map((photo: any) => ({
+        id: photo.id,
+        url: photo.photo_url,
+        type: photo.photo_type,
+        description: photo.description || '',
+      })) || [],
+      aade: {
+        dclId: data.aade_dcl_id,
+        submittedAt: data.aade_submitted_at ? new Date(data.aade_submitted_at) : undefined,
+        updatedAt: data.aade_updated_at ? new Date(data.aade_updated_at) : undefined,
+        invoiceMark: data.aade_invoice_mark,
+        status: data.aade_status,
+        errorMessage: data.aade_error_message,
+      },
+      status: data.status,
+      notes: data.notes || '',
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
+  }
+
+  /**
+   * Map our Contract interface to Supabase format
+   */
+  private static mapContractToSupabase(contract: Contract): Partial<SupabaseContract> {
+    return {
+      renter_name: contract.renterInfo.fullName,
+      renter_email: contract.renterInfo.email,
+      renter_phone: contract.renterInfo.phone,
+      renter_address: contract.renterInfo.address,
+      renter_id_number: contract.renterInfo.idNumber,
+      renter_driving_license: contract.renterInfo.drivingLicense,
+      pickup_date: contract.rentalPeriod.pickupDate.toISOString().split('T')[0],
+      pickup_time: contract.rentalPeriod.pickupTime,
+      pickup_location: contract.rentalPeriod.pickupLocation,
+      dropoff_date: contract.rentalPeriod.dropoffDate.toISOString().split('T')[0],
+      dropoff_time: contract.rentalPeriod.dropoffTime,
+      dropoff_location: contract.rentalPeriod.dropoffLocation,
+      total_cost: contract.rentalPeriod.totalCost || 0,
+      car_make: contract.carInfo.make,
+      car_model: contract.carInfo.model,
+      car_license_plate: contract.carInfo.licensePlate,
+      car_color: contract.carInfo.color,
+      fuel_level: contract.carCondition?.fuelLevel || 8,
+      mileage_start: contract.carCondition?.mileageStart || 0,
+      mileage_end: contract.carCondition?.mileageEnd,
+      condition_notes: contract.carCondition?.conditionNotes,
+      aade_dcl_id: contract.aade?.dclId,
+      aade_submitted_at: contract.aade?.submittedAt?.toISOString(),
+      aade_updated_at: contract.aade?.updatedAt?.toISOString(),
+      aade_invoice_mark: contract.aade?.invoiceMark,
+      aade_status: contract.aade?.status || 'pending',
+      aade_error_message: contract.aade?.errorMessage,
+      status: contract.status || 'active',
+      notes: contract.notes,
+    };
+  }
+
+  /**
+   * Update contract status
+   */
+  static async updateContractStatus(id: string, status: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating contract status:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error in updateContractStatus:', error);
+      throw error;
+    }
   }
 }
-

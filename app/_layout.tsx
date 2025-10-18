@@ -67,6 +67,12 @@ export default function RootLayout() {
         <Stack.Screen name="auth/sign-up" />
         <Stack.Screen name="auth/reset-password" />
         <Stack.Screen name="index" />
+        <Stack.Screen name="contracts" />
+        <Stack.Screen name="cars" />
+        <Stack.Screen name="analytics" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="damage-report" />
+        <Stack.Screen name="settings" />
         <Stack.Screen name="new-contract" />
         <Stack.Screen name="contract-details" />
         <Stack.Screen name="edit-contract" />

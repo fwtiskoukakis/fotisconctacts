@@ -15,11 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Contract, RenterInfo, RentalPeriod, CarInfo, CarCondition, DamagePoint, User } from '../models/contract.interface';
+import { ContractTemplate } from '../models/contract-template.interface';
 import { SignaturePad } from '../components/signature-pad';
 import { CarDiagram } from '../components/car-diagram';
 import { PhotoCapture } from '../components/photo-capture';
+import { ContractTemplateSelector } from '../components/contract-template-selector';
 import { ContractStorageService } from '../services/contract-storage.service';
 import { UserStorageService } from '../services/user-storage.service';
+import { ContractTemplateService } from '../services/contract-template.service';
 import { format } from 'date-fns';
 import Svg, { Path } from 'react-native-svg';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -33,6 +36,8 @@ export default function NewContractScreen() {
   const router = useRouter();
   const [selectedUserId, setSelectedUserId] = useState<string>('default-user');
   const [users, setUsers] = useState<User[]>([]);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   
   // Essential fields only
   const [renterInfo, setRenterInfo] = useState<RenterInfo>({
@@ -91,6 +96,42 @@ export default function NewContractScreen() {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  function handleSelectTemplate(template: ContractTemplate) {
+    setSelectedTemplate(template);
+    applyTemplateData(template);
+  }
+
+  function applyTemplateData(template: ContractTemplate) {
+    const templateData = template.templateData;
+    
+    // Apply template defaults
+    setRentalPeriod(prev => ({
+      ...prev,
+      pickupTime: templateData.defaultPickupTime,
+      dropoffTime: templateData.defaultDropoffTime,
+      pickupLocation: templateData.defaultPickupLocation,
+      dropoffLocation: templateData.defaultDropoffLocation,
+      depositAmount: templateData.depositAmount,
+      insuranceCost: templateData.insuranceCost,
+    }));
+
+    // Set car condition defaults
+    setCarCondition(prev => ({
+      ...prev,
+      fuelLevel: templateData.minimumFuelLevel,
+    }));
+
+    Alert.alert(
+      'Πρότυπο Εφαρμόστηκε',
+      `Το πρότυπο "${template.name}" εφαρμόστηκε επιτυχώς. Μπορείτε να τροποποιήσετε τα στοιχεία αν χρειάζεται.`
+    );
+  }
+
+  function handleCreateCustom() {
+    setShowTemplateSelector(false);
+    // Continue with manual contract creation
+  }
 
   function handleSignatureSave(uri: string) {
     setClientSignature(uri);
@@ -247,6 +288,31 @@ export default function NewContractScreen() {
               👤 {users.find(u => u.id === selectedUserId)?.name || 'Χρήστης'}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Template Selection */}
+        <View style={styles.section}>
+          <View style={styles.templateHeader}>
+            <Text style={styles.sectionTitle}>📋 Πρότυπο Συμβολαίου</Text>
+            <TouchableOpacity
+              style={styles.templateButton}
+              onPress={() => setShowTemplateSelector(true)}
+            >
+              <Text style={styles.templateButtonText}>
+                {selectedTemplate ? 'Αλλαγή Προτύπου' : 'Επιλογή Προτύπου'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {selectedTemplate && (
+            <View style={styles.selectedTemplate}>
+              <Text style={styles.selectedTemplateName}>{selectedTemplate.name}</Text>
+              <Text style={styles.selectedTemplateDescription}>{selectedTemplate.description}</Text>
+              <View style={styles.templateDetails}>
+                <Text style={styles.templateDetail}>Κατηγορία: {selectedTemplate.category}</Text>
+                <Text style={styles.templateDetail}>Κόστος: €{selectedTemplate.templateData.baseDailyRate}/ημέρα</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* 1. Essential Renter Info - Compact */}
@@ -544,6 +610,14 @@ export default function NewContractScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Template Selector Modal */}
+      <ContractTemplateSelector
+        visible={showTemplateSelector}
+        onClose={() => setShowTemplateSelector(false)}
+        onSelectTemplate={handleSelectTemplate}
+        onCreateCustom={handleCreateCustom}
+      />
     </SafeAreaView>
   );
 }
@@ -582,6 +656,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#333',
     fontWeight: '500',
+  },
+  templateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  templateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  templateButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  selectedTemplate: {
+    backgroundColor: '#e8f4fd',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  selectedTemplateName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  selectedTemplateDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+  },
+  templateDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  templateDetail: {
+    fontSize: 11,
+    color: '#666',
   },
   header: {
     fontSize: 20,

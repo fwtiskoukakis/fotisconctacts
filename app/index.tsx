@@ -7,12 +7,24 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  TextInput,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Contract, User } from '../models/contract.interface';
 import { ContractStorageService } from '../services/contract-storage.service';
 import { UserStorageService } from '../services/user-storage.service';
+import { SupabaseContractService } from '../services/supabase-contract.service';
+import { AppHeader } from '../components/app-header';
+import { DashboardAnalytics } from '../components/dashboard-analytics';
+import { AdvancedSearch } from '../components/advanced-search';
+import { BottomTabBar } from '../components/bottom-tab-bar';
+import { ContextAwareFab } from '../components/context-aware-fab';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+
+const { width } = Dimensions.get('window');
 
 /**
  * Home screen showing list of contracts
@@ -20,11 +32,27 @@ import { UserStorageService } from '../services/user-storage.service';
 export default function HomeScreen() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<'pickupDate' | 'totalCost' | 'renterName'>('pickupDate');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('default-user');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    status: 'all' as 'all' | 'active' | 'completed' | 'upcoming',
+    dateRange: 'all' as 'all' | 'today' | 'week' | 'month',
+    priceRange: 'all' as 'all' | 'low' | 'medium' | 'high',
+    fuelLevel: 'all' as 'all' | 'high' | 'medium' | 'low',
+  });
+  const [analytics, setAnalytics] = useState({
+    totalRevenue: 0,
+    activeRentals: 0,
+    upcomingReturns: 0,
+    revenueThisMonth: 0,
+    totalContracts: 0,
+    averageRentalDuration: 0,
+  });
 
   useEffect(() => {
     loadContracts();
@@ -35,8 +63,13 @@ export default function HomeScreen() {
     if (contracts.length > 0) {
       const sorted = sortContracts(contracts, sortBy, sortOrder);
       setContracts(sorted);
+      calculateAnalytics(sorted);
     }
   }, [sortBy, sortOrder]);
+
+  useEffect(() => {
+    filterContracts();
+  }, [contracts, searchQuery, filters]);
 
   async function loadUsers() {
     try {
@@ -49,12 +82,183 @@ export default function HomeScreen() {
 
   async function loadContracts() {
     try {
-      const loadedContracts = await ContractStorageService.getAllContracts();
+      // Try Supabase first, fallback to local storage
+      let loadedContracts: Contract[] = [];
+      
+      try {
+        loadedContracts = await SupabaseContractService.getAllContracts();
+      } catch (supabaseError) {
+        console.log('Supabase not available, using local storage:', supabaseError);
+        loadedContracts = await ContractStorageService.getAllContracts();
+      }
+      
       const sorted = sortContracts(loadedContracts, sortBy, sortOrder);
       setContracts(sorted);
+      calculateAnalytics(sorted);
     } catch (error) {
       console.error('Error loading contracts:', error);
     }
+  }
+
+  function calculateAnalytics(contracts: Contract[]) {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    
+    const totalRevenue = contracts.reduce((sum, c) => sum + (c.rentalPeriod.totalCost || 0), 0);
+    
+    const activeRentals = contracts.filter(c => {
+      const pickup = new Date(c.rentalPeriod.pickupDate);
+      const dropoff = new Date(c.rentalPeriod.dropoffDate);
+      return pickup <= now && now <= dropoff;
+    }).length;
+    
+    const upcomingReturns = contracts.filter(c => {
+      const dropoff = new Date(c.rentalPeriod.dropoffDate);
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return dropoff >= now && dropoff <= tomorrow;
+    }).length;
+    
+    const revenueThisMonth = contracts
+      .filter(c => {
+        const pickup = new Date(c.rentalPeriod.pickupDate);
+        return pickup.getMonth() === thisMonth && pickup.getFullYear() === thisYear;
+      })
+      .reduce((sum, c) => sum + (c.rentalPeriod.totalCost || 0), 0);
+    
+    const totalContracts = contracts.length;
+    
+    const averageRentalDuration = activeRentals > 0 
+      ? contracts
+          .filter(c => {
+            const pickup = new Date(c.rentalPeriod.pickupDate);
+            const dropoff = new Date(c.rentalPeriod.dropoffDate);
+            return pickup <= now && now <= dropoff;
+          })
+          .reduce((sum, c) => {
+            const pickup = new Date(c.rentalPeriod.pickupDate);
+            const dropoff = new Date(c.rentalPeriod.dropoffDate);
+            return sum + Math.ceil((dropoff.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+          }, 0) / activeRentals
+      : 0;
+    
+    setAnalytics({ 
+      totalRevenue, 
+      activeRentals, 
+      upcomingReturns, 
+      revenueThisMonth, 
+      totalContracts,
+      averageRentalDuration: Math.round(averageRentalDuration)
+    });
+  }
+
+  function filterContracts() {
+    let filtered = contracts;
+
+    // Text search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(contract => {
+        return (
+          contract.renterInfo.fullName.toLowerCase().includes(query) ||
+          contract.carInfo.licensePlate.toLowerCase().includes(query) ||
+          contract.carInfo.make?.toLowerCase().includes(query) ||
+          contract.carInfo.model?.toLowerCase().includes(query) ||
+          contract.carInfo.makeModel?.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    // Status filter
+    if (filters.status !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(contract => {
+        const pickup = new Date(contract.rentalPeriod.pickupDate);
+        const dropoff = new Date(contract.rentalPeriod.dropoffDate);
+        
+        switch (filters.status) {
+          case 'active':
+            return pickup <= now && now <= dropoff;
+          case 'completed':
+            return dropoff < now;
+          case 'upcoming':
+            return pickup > now;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(contract => {
+        const pickup = new Date(contract.rentalPeriod.pickupDate);
+        
+        switch (filters.dateRange) {
+          case 'today':
+            return pickup.toDateString() === now.toDateString();
+          case 'week':
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return pickup >= weekAgo;
+          case 'month':
+            const monthAgo = new Date(now);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return pickup >= monthAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Price range filter
+    if (filters.priceRange !== 'all') {
+      filtered = filtered.filter(contract => {
+        const cost = contract.rentalPeriod.totalCost || 0;
+        
+        switch (filters.priceRange) {
+          case 'low':
+            return cost <= 50;
+          case 'medium':
+            return cost > 50 && cost <= 150;
+          case 'high':
+            return cost > 150;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Fuel level filter
+    if (filters.fuelLevel !== 'all') {
+      filtered = filtered.filter(contract => {
+        const fuelLevel = contract.carCondition?.fuelLevel || 8;
+        
+        switch (filters.fuelLevel) {
+          case 'high':
+            return fuelLevel >= 6;
+          case 'medium':
+            return fuelLevel >= 3 && fuelLevel < 6;
+          case 'low':
+            return fuelLevel < 3;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    setFilteredContracts(filtered);
+  }
+
+  function clearFilters() {
+    setFilters({
+      status: 'all',
+      dateRange: 'all',
+      priceRange: 'all',
+      fuelLevel: 'all',
+    });
   }
 
   function sortContracts(contracts: Contract[], sortBy: string, sortOrder: string): Contract[] {
@@ -210,40 +414,51 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <TouchableOpacity
-            onLongPress={contracts.length > 0 ? clearAllContracts : undefined}
-            activeOpacity={contracts.length > 0 ? 0.7 : 1}
-          >
-            <Text style={styles.headerTitle}>Ενοικιάσεις</Text>
-            <Text style={styles.headerSubtitle}>
-              {contracts.length} {contracts.length === 1 ? 'συμβόλαιο' : 'συμβόλαια'}
-              {contracts.length > 0 && (
-                <Text style={styles.clearHint}> • Κρατήστε πατημένο για διαγραφή όλων</Text>
-              )}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <AppHeader showActions={true} />
+      
+      {/* Search Bar - Moved to top */}
+      <View style={styles.searchContainer}>
+        <AdvancedSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={clearFilters}
+        />
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity
-          style={styles.userButton}
-          onPress={() => router.push('/user-management')}
-        >
-          <Text style={styles.userButtonText}>
-            👤 {users.find(u => u.id === selectedUserId)?.name || 'Χρήστης'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.newButton}
-          onPress={() => router.push('/new-contract')}
-        >
-          <Text style={styles.newButtonText}>+ Νέο Συμβόλαιο</Text>
-        </TouchableOpacity>
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Dashboard Analytics */}
+        <DashboardAnalytics 
+          analytics={analytics} 
+          onStatPress={(statType) => {
+            console.log('Stat pressed:', statType);
+          }}
+        />
+
+        {/* Quick Stats Cards */}
+        <View style={styles.quickStatsContainer}>
+          <View style={styles.quickStatsRow}>
+            <View style={[styles.quickStatCard, { backgroundColor: Colors.primary }]}>
+              <Text style={styles.quickStatValue}>{contracts.length}</Text>
+              <Text style={styles.quickStatLabel}>Συνολικά</Text>
+            </View>
+            <View style={[styles.quickStatCard, { backgroundColor: Colors.success }]}>
+              <Text style={styles.quickStatValue}>{contracts.filter(c => c.status === 'active').length}</Text>
+              <Text style={styles.quickStatLabel}>Ενεργά</Text>
+            </View>
+            <View style={[styles.quickStatCard, { backgroundColor: Colors.info }]}>
+              <Text style={styles.quickStatValue}>{contracts.filter(c => c.status === 'completed').length}</Text>
+              <Text style={styles.quickStatLabel}>Ολοκληρωμένα</Text>
+            </View>
+          </View>
       </View>
 
       {/* Sort Options */}
@@ -278,19 +493,27 @@ export default function HomeScreen() {
       </View>
 
       {/* Contract List */}
-      <FlatList
-        data={contracts}
-        renderItem={renderContractItem}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        contentContainerStyle={[
-          styles.listContent,
-          contracts.length === 0 && styles.listContentEmpty
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-      />
+        {filteredContracts.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <View style={styles.contractsContainer}>
+            {filteredContracts.map((contract, index) => (
+              <View key={`${contract.id}-${index}`}>
+                {renderContractItem({ item: contract })}
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+      
+        {/* Floating Action Button */}
+        <ContextAwareFab
+          onNewContract={() => router.push('/new-contract')}
+          onNewDamage={() => router.push('/damage-report')}
+          onNewUser={() => router.push('/user-management')}
+        />
+      
+      <BottomTabBar />
     </SafeAreaView>
   );
 }
@@ -298,160 +521,189 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.background,
   },
-  header: {
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Space for FAB and bottom tab
+  },
+  searchContainer: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  quickStatsContainer: {
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  quickStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  quickStatCard: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    ...Shadows.md,
   },
-  headerTitle: {
-    fontSize: 28,
+  quickStatValue: {
+    ...Typography.h3,
+    color: '#FFFFFF',
     fontWeight: 'bold',
-    color: '#333',
+    marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+  quickStatLabel: {
+    ...Typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    opacity: 0.9,
   },
-  clearHint: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
+  contractsContainer: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
   actionButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    gap: 15,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    borderBottomColor: Colors.borderLight,
+    gap: Spacing.sm,
   },
   userButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: Colors.border,
     flex: 1,
-    marginRight: 8,
+    marginRight: Spacing.xs,
+    ...Shadows.sm,
+  },
+  userButtonIcon: {
+    fontSize: 16,
+    marginRight: Spacing.xs,
   },
   userButtonText: {
-    fontSize: 14,
-    color: '#333',
+    ...Typography.bodySmall,
+    color: Colors.text,
     fontWeight: '500',
-    textAlign: 'center',
+    flex: 1,
   },
   newButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
     flex: 1,
-    marginLeft: 8,
+    marginLeft: Spacing.xs,
+    ...Shadows.sm,
+  },
+  newButtonIcon: {
+    fontSize: 18,
+    color: Colors.textInverse,
+    fontWeight: 'bold',
+    marginRight: Spacing.xs,
   },
   newButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    ...Typography.bodySmall,
+    color: Colors.textInverse,
     fontWeight: '600',
-    textAlign: 'center',
+    flex: 1,
   },
   sortContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: Colors.borderLight,
   },
   sortLabel: {
-    fontSize: 14,
+    ...Typography.bodySmall,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 10,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
   },
   sortButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: Spacing.xs,
   },
   sortButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: 2,
-    borderRadius: 6,
-    backgroundColor: '#f5f5f5',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   sortButtonActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   sortButtonText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '500',
-    color: '#666',
+    color: Colors.textSecondary,
   },
   sortButtonTextActive: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: Colors.textInverse,
+    fontWeight: '600',
   },
   listContent: {
-    padding: 15,
+    padding: Spacing.md,
   },
   listContentEmpty: {
     flex: 1,
   },
   contractItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Glassmorphism.light,
   },
   contractHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: Spacing.sm,
   },
   contractMainInfo: {
     flex: 1,
-    marginRight: 10,
+    marginRight: Spacing.sm,
   },
   contractName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    ...Typography.h4,
+    color: Colors.text,
     marginBottom: 4,
   },
   contractCar: {
-    fontSize: 14,
-    color: '#666',
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
   },
   fuelBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: '#FF9500',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.warning,
     minWidth: 60,
+    alignItems: 'center',
   },
   fuelBarContainer: {
     alignItems: 'center',
@@ -460,92 +712,91 @@ const styles = StyleSheet.create({
     width: 40,
     height: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 3,
+    borderRadius: BorderRadius.sm,
     marginBottom: 2,
     overflow: 'hidden',
   },
   fuelBarFill: {
     height: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 3,
+    backgroundColor: Colors.textInverse,
+    borderRadius: BorderRadius.sm,
   },
   fuelBadgeText: {
-    color: '#fff',
-    fontSize: 10,
+    color: Colors.textInverse,
+    ...Typography.caption,
     fontWeight: 'bold',
   },
   contractDetails: {
-    marginBottom: 10,
+    marginBottom: Spacing.sm,
   },
   dateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   dateLabel: {
-    fontSize: 13,
-    color: '#888',
+    ...Typography.caption,
+    color: Colors.textTertiary,
     width: 80,
   },
   dateValue: {
-    fontSize: 13,
-    color: '#333',
+    ...Typography.caption,
+    color: Colors.text,
     fontWeight: '500',
   },
   costInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   costLabel: {
-    fontSize: 14,
+    ...Typography.bodySmall,
     fontWeight: '600',
-    color: '#555',
+    color: Colors.textSecondary,
   },
   costValue: {
-    fontSize: 14,
-    color: '#007AFF',
+    ...Typography.bodySmall,
+    color: Colors.primary,
     fontWeight: 'bold',
   },
   contractFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: Colors.borderLight,
   },
   locationText: {
-    fontSize: 13,
-    color: '#666',
+    ...Typography.caption,
+    color: Colors.textSecondary,
     flex: 1,
-    marginRight: 10,
+    marginRight: Spacing.sm,
   },
   damageIndicator: {
-    fontSize: 12,
-    color: '#FF9500',
+    ...Typography.caption,
+    color: Colors.warning,
     fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: Spacing.xl,
   },
   emptyIcon: {
     fontSize: 64,
-    marginBottom: 20,
+    marginBottom: Spacing.lg,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    ...Typography.h3,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
+    ...Typography.bodySmall,
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
