@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Ενοικιάσεις Πειραιάς",
-    "slug": "car-rental-contract-manager",
+    "name": "AGGELOS Rentals",
+    "slug": "aggelos-rentals",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "fotisconctacts",
+    "scheme": "aggelosrentals",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fotis.contracts",
+      "bundleIdentifier": "com.aggelos.rentals",
       "infoPlist": {
         "NSCameraUsageDescription": "Χρειαζόμαστε πρόσβαση στην κάμερα για να βγάλετε φωτογραφίες του οχήματος",
         "NSPhotoLibraryUsageDescription": "Χρειαζόμαστε πρόσβαση στη βιβλιοθήκη φωτογραφιών για να αποθηκεύσουμε τις φωτογραφίες του οχήματος",
@@ -29,7 +29,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.fotis.contracts",
+      "package": "com.aggelos.rentals",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

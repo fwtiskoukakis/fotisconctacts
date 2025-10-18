@@ -13,6 +13,7 @@ import {
   Modal,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -142,10 +143,14 @@ export default function SignInScreen() {
               },
             ]}
           >
-            <View style={[styles.logoContainer, Glassmorphism.medium]}>
-              <Text style={styles.logoText}>FC</Text>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../../assets/logo.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.appTitle}>Fotis Contacts</Text>
+            <Text style={styles.appTitle}>AGGELOS Rentals</Text>
             <Text style={styles.appSubtitle}>Σύστημα Διαχείρισης Ενοικιάσεων Αυτοκινήτων</Text>
             <Text style={styles.welcomeText}>Καλώς ήρθατε! Συνδεθείτε για να συνεχίσετε</Text>
           </Animated.View>
@@ -258,7 +263,7 @@ export default function SignInScreen() {
             ]}
           >
             <Text style={styles.footerText}>
-              © 2024 Fotis Contacts. Όλα τα δικαιώματα διατηρούνται.
+              © 2024 AGGELOS Rentals. Όλα τα δικαιώματα διατηρούνται.
             </Text>
             <Text style={styles.versionText}>Έκδοση 1.0.0</Text>
           </Animated.View>
@@ -371,19 +376,15 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxl,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.primary,
+    width: 200,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.lg,
-    ...Shadows.lg,
   },
-  logoText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   appTitle: {
     ...Typography.h1,
