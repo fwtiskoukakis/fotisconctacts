@@ -42,14 +42,18 @@ export class AADEService {
   /**
    * Get request headers
    */
-  private static getHeaders(): Record<string, string> {
-    if (!this.config) {
-      throw new Error('AADE Service not initialized. Call initialize() first.');
+  private static getHeaders(userId?: string, subscriptionKey?: string): Record<string, string> {
+    // Use provided credentials or fall back to config
+    const userIdToUse = userId || this.config?.userId;
+    const keyToUse = subscriptionKey || this.config?.subscriptionKey;
+
+    if (!userIdToUse || !keyToUse) {
+      throw new Error('AADE credentials not provided. Either initialize service or pass credentials.');
     }
 
     return {
-      'aade-user-id': this.config.userId,
-      'ocp-apim-subscription-key': this.config.subscriptionKey,
+      'aade-user-id': userIdToUse,
+      'ocp-apim-subscription-key': keyToUse,
       'Content-Type': 'application/xml; charset=UTF-8',
     };
   }
@@ -57,14 +61,18 @@ export class AADEService {
   /**
    * Create a new digital client record
    */
-  static async sendClient(params: NewDigitalClientDoc): Promise<AADEResponse> {
+  static async sendClient(
+    params: NewDigitalClientDoc,
+    userId?: string,
+    subscriptionKey?: string
+  ): Promise<AADEResponse> {
     try {
       const xml = this.buildSendClientXML(params);
       const url = `${this.getBaseUrl()}SendClient`;
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: this.getHeaders(),
+        headers: this.getHeaders(userId, subscriptionKey),
         body: xml,
       });
 

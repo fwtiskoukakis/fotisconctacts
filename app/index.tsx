@@ -14,9 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Contract, User } from '../models/contract.interface';
-import { ContractStorageService } from '../services/contract-storage.service';
-import { UserStorageService } from '../services/user-storage.service';
 import { SupabaseContractService } from '../services/supabase-contract.service';
+import { supabase } from '../utils/supabase';
 import { AppHeader } from '../components/app-header';
 import { DashboardAnalytics } from '../components/dashboard-analytics';
 import { AdvancedSearch } from '../components/advanced-search';
@@ -73,7 +72,25 @@ export default function HomeScreen() {
 
   async function loadUsers() {
     try {
-      const loadedUsers = await UserStorageService.getAllUsers();
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      const loadedUsers: User[] = data?.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        address: u.address,
+        signature: u.signature_url || '',
+        signatureUrl: u.signature_url,
+        createdAt: new Date(u.created_at),
+        updatedAt: u.updated_at ? new Date(u.updated_at) : undefined,
+      })) || [];
+      
       setUsers(loadedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -82,21 +99,13 @@ export default function HomeScreen() {
 
   async function loadContracts() {
     try {
-      // Try Supabase first, fallback to local storage
-      let loadedContracts: Contract[] = [];
-      
-      try {
-        loadedContracts = await SupabaseContractService.getAllContracts();
-      } catch (supabaseError) {
-        console.log('Supabase not available, using local storage:', supabaseError);
-        loadedContracts = await ContractStorageService.getAllContracts();
-      }
-      
+      const loadedContracts = await SupabaseContractService.getAllContracts();
       const sorted = sortContracts(loadedContracts, sortBy, sortOrder);
       setContracts(sorted);
       calculateAnalytics(sorted);
     } catch (error) {
       console.error('Error loading contracts:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης συμβολαίων');
     }
   }
 
@@ -311,7 +320,14 @@ export default function HomeScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await ContractStorageService.clearAllContracts();
+              // Delete all contracts from Supabase
+              const { error } = await supabase
+                .from('contracts')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all (dummy condition)
+              
+              if (error) throw error;
+              
               await loadContracts();
               Alert.alert('Επιτυχία', 'Όλα τα συμβόλαια διαγράφηκαν επιτυχώς');
             } catch (error) {

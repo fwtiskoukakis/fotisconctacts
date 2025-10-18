@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
+import { Breadcrumb } from '../components/breadcrumb';
 import { BulkOperations } from '../components/bulk-operations';
 import { ContextAwareFab } from '../components/context-aware-fab';
 import { SupabaseContractService } from '../services/supabase-contract.service';
@@ -232,6 +233,14 @@ export default function ContractsScreen() {
           </Text>
         </TouchableOpacity>
       </AppHeader>
+      
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: 'Αρχική', path: '/' },
+          { label: 'Συμβόλαια' },
+        ]}
+      />
       
       {/* Stats Cards */}
       <View style={styles.statsContainer}>

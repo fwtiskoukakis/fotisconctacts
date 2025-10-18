@@ -16,14 +16,38 @@ export class AADEIntegrationService {
    */
   static async submitContractToAADE(
     contractId: string,
-    contract: Contract
+    contract: Contract,
+    userId: string
   ): Promise<{ success: boolean; dclId?: number; error?: string }> {
     try {
-      // Get company VAT from config
-      const companyVat = process.env.EXPO_PUBLIC_COMPANY_VAT_NUMBER;
-      if (!companyVat) {
-        throw new Error('Company VAT number not configured');
+      // Get user's AADE settings from database
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('aade_user_id, aade_subscription_key, company_vat_number, aade_enabled')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || !userProfile) {
+        throw new Error('Could not fetch user AADE settings');
       }
+
+      // Check if AADE is enabled for this user
+      if (!userProfile.aade_enabled) {
+        return {
+          success: false,
+          error: 'AADE integration is not enabled for this user',
+        };
+      }
+
+      // Validate user has configured AADE credentials
+      if (!userProfile.aade_user_id || !userProfile.aade_subscription_key || !userProfile.company_vat_number) {
+        return {
+          success: false,
+          error: 'AADE credentials not configured. Please configure in Settings > AADE Integration',
+        };
+      }
+
+      const companyVat = userProfile.company_vat_number;
 
       // Validate customer VAT
       if (!AADEService.isValidVatNumber(contract.renterInfo.taxId)) {
@@ -55,8 +79,12 @@ export class AADEIntegrationService {
         },
       };
 
-      // Submit to AADE
-      const response: AADEResponse = await AADEService.sendClient(aadeRequest);
+      // Submit to AADE with user-specific credentials
+      const response: AADEResponse = await AADEService.sendClient(
+        aadeRequest,
+        userProfile.aade_user_id,
+        userProfile.aade_subscription_key
+      );
 
       if (response.statusCode === 'Success' && response.newClientDclID) {
         // Update contract in database

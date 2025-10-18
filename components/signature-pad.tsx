@@ -239,18 +239,18 @@ export function SignaturePad({ onSignatureSave, initialSignature, isModal = fals
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
     color: '#333',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   signatureContainer: {
     backgroundColor: '#fff',
@@ -351,15 +351,14 @@ const styles = StyleSheet.create({
   },
   openModalButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
   },
   openModalButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

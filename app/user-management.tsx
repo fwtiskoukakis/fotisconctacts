@@ -12,10 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { User } from '../models/contract.interface';
-import { UserStorageService } from '../services/user-storage.service';
+import { supabase } from '../utils/supabase';
 import { SignaturePad } from '../components/signature-pad';
 import Svg, { Path } from 'react-native-svg';
-import * as FileSystem from 'expo-file-system/legacy';
 
 /**
  * User management screen for adding, editing, and managing users
@@ -37,7 +36,25 @@ export default function UserManagementScreen() {
 
   async function loadUsers() {
     try {
-      const loadedUsers = await UserStorageService.getAllUsers();
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      const loadedUsers: User[] = data?.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        address: u.address,
+        signature: u.signature_url || '',
+        signatureUrl: u.signature_url,
+        createdAt: new Date(u.created_at),
+        updatedAt: u.updated_at ? new Date(u.updated_at) : undefined,
+      })) || [];
+      
       setUsers(loadedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -56,26 +73,7 @@ export default function UserManagementScreen() {
     setEditingUser(user);
     setNewUserName(user.name);
     setNewUserSignature(user.signature);
-    
-    // Load signature paths if signature exists
-    if (user.signature) {
-      FileSystem.readAsStringAsync(user.signature).then(svgContent => {
-        const pathMatches = svgContent.match(/<path[^>]*d="([^"]*)"[^>]*>/g);
-        if (pathMatches) {
-          const paths = pathMatches.map(match => {
-            const dMatch = match.match(/d="([^"]*)"/);
-            return dMatch ? dMatch[1] : '';
-          }).filter(path => path !== '');
-          setNewUserSignaturePaths(paths);
-        }
-      }).catch(error => {
-        console.error('Error reading signature file:', error);
-        setNewUserSignaturePaths([]);
-      });
-    } else {
-      setNewUserSignaturePaths([]);
-    }
-    
+    setNewUserSignaturePaths([]);
     setShowEditModal(true);
   }
 
@@ -89,17 +87,30 @@ export default function UserManagementScreen() {
     try {
       if (editingUser) {
         // Update existing user
-        const updatedUser: User = {
-          ...editingUser,
-          name: newUserName.trim(),
-          signature: newUserSignature,
-        };
-        await UserStorageService.saveUser(updatedUser);
+        const { error } = await supabase
+          .from('users')
+          .update({
+            name: newUserName.trim(),
+            signature_url: newUserSignature,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingUser.id);
+        
+        if (error) throw error;
+        
         Alert.alert('Επιτυχία', 'Ο χρήστης ενημερώθηκε επιτυχώς');
         setShowEditModal(false);
       } else {
         // Create new user
-        await UserStorageService.createUser(newUserName.trim(), newUserSignature);
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            name: newUserName.trim(),
+            signature_url: newUserSignature,
+          });
+        
+        if (error) throw error;
+        
         Alert.alert('Επιτυχία', 'Ο χρήστης δημιουργήθηκε επιτυχώς');
         setShowAddModal(false);
       }
@@ -132,7 +143,13 @@ export default function UserManagementScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await UserStorageService.deleteUser(user.id);
+              const { error } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', user.id);
+              
+              if (error) throw error;
+              
               await loadUsers();
               Alert.alert('Επιτυχία', 'Ο χρήστης διαγράφηκε επιτυχώς');
             } catch (error) {

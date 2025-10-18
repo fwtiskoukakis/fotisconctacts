@@ -11,10 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Contract, DamagePoint, User } from '../models/contract.interface';
-import { ContractStorageService } from '../services/contract-storage.service';
-import { UserStorageService } from '../services/user-storage.service';
+import { SupabaseContractService } from '../services/supabase-contract.service';
+import { supabase } from '../utils/supabase';
 import { PDFGenerationService } from '../services/pdf-generation.service';
 import { ImageModal } from '../components/image-modal';
+import { BottomTabBar } from '../components/bottom-tab-bar';
+import { Breadcrumb } from '../components/breadcrumb';
 import { format } from 'date-fns';
 
 /**
@@ -32,14 +34,39 @@ export default function ContractDetailsScreen() {
   React.useEffect(() => {
     async function loadContract() {
       if (typeof contractId === 'string') {
-        const loadedContract = await ContractStorageService.getContractById(contractId);
-        if (loadedContract) {
-          setContract(loadedContract);
-          // Load user who created the contract
-          const contractUser = await UserStorageService.getUserById(loadedContract.userId || 'default-user');
-          setUser(contractUser);
-        } else {
-          Alert.alert('Σφάλμα', 'Το συμβόλαιο δεν βρέθηκε.');
+        try {
+          const loadedContract = await SupabaseContractService.getContractById(contractId);
+          if (loadedContract) {
+            setContract(loadedContract);
+            // Load user who created the contract from Supabase
+            if (loadedContract.userId) {
+              const { data: userData, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', loadedContract.userId)
+                .single();
+              
+              if (userData && !error) {
+                setUser({
+                  id: userData.id,
+                  name: userData.name,
+                  email: userData.email,
+                  phone: userData.phone,
+                  address: userData.address,
+                  signature: userData.signature_url || '',
+                  signatureUrl: userData.signature_url,
+                  createdAt: new Date(userData.created_at),
+                  updatedAt: userData.updated_at ? new Date(userData.updated_at) : undefined,
+                });
+              }
+            }
+          } else {
+            Alert.alert('Σφάλμα', 'Το συμβόλαιο δεν βρέθηκε.');
+            router.back();
+          }
+        } catch (error) {
+          console.error('Error loading contract:', error);
+          Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης συμβολαίου.');
           router.back();
         }
       }
@@ -87,8 +114,14 @@ export default function ContractDetailsScreen() {
           text: 'Διαγραφή',
           style: 'destructive',
           onPress: async () => {
-            await ContractStorageService.deleteContract(contract.id);
-            router.back();
+            try {
+              await SupabaseContractService.deleteContract(contract.id);
+              Alert.alert('Επιτυχία', 'Το συμβόλαιο διαγράφηκε επιτυχώς.');
+              router.back();
+            } catch (error) {
+              console.error('Error deleting contract:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής συμβολαίου.');
+            }
           },
         },
       ]
@@ -110,7 +143,16 @@ export default function ContractDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: 'Αρχική', path: '/' },
+          { label: 'Συμβόλαια', path: '/contracts' },
+          { label: contract.renterInfo.fullName },
+        ]}
+      />
+      
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Πίσω</Text>
@@ -220,6 +262,8 @@ export default function ContractDetailsScreen() {
         imageUri={selectedImageUri}
         onClose={handleCloseImageModal}
       />
+
+      <BottomTabBar />
     </SafeAreaView>
   );
 }

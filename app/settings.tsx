@@ -72,6 +72,20 @@ export default function SettingsScreen() {
       ],
     },
     {
+      id: 'aade',
+      title: 'Ψηφιακό Πελατολόγιο',
+      items: [
+        {
+          id: 'aade-config',
+          title: 'Ρυθμίσεις Πελατολογίου',
+          subtitle: 'Digital Client Registry - ΑΑΔΕ',
+          icon: '🏛️',
+          type: 'navigation',
+          onPress: () => router.push('/aade-settings'),
+        },
+      ],
+    },
+    {
       id: 'app',
       title: 'Εφαρμογή',
       items: [

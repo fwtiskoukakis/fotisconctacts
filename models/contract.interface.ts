@@ -45,8 +45,21 @@ export interface DamagePoint {
 export interface User {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
   signature: string; // Base64 encoded signature image
+  signatureUrl?: string; // URL to signature in Supabase storage
+  // AADE Integration Fields
+  aadeUserId?: string; // AADE User ID for myDATA
+  aadeSubscriptionKey?: string; // AADE Subscription Key
+  companyVatNumber?: string; // Company VAT Number (ΑΦΜ)
+  companyName?: string; // Company legal name
+  companyAddress?: string; // Company registered address
+  companyActivity?: string; // Company business activity
+  aadeEnabled?: boolean; // Whether AADE integration is enabled
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface Contract {

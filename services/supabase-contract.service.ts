@@ -1,62 +1,10 @@
 import { supabase } from '../utils/supabase';
 import { Contract } from '../models/contract.interface';
 
-export interface SupabaseContract {
-  id: string;
-  user_id: string;
-  renter_name: string;
-  renter_email?: string;
-  renter_phone?: string;
-  renter_address?: string;
-  renter_id_number?: string;
-  renter_driving_license?: string;
-  pickup_date: string;
-  pickup_time: string;
-  pickup_location: string;
-  dropoff_date: string;
-  dropoff_time: string;
-  dropoff_location?: string;
-  total_cost: number;
-  car_make?: string;
-  car_model?: string;
-  car_license_plate?: string;
-  car_color?: string;
-  fuel_level: number;
-  mileage_start: number;
-  mileage_end?: number;
-  condition_notes?: string;
-  aade_dcl_id?: number;
-  aade_submitted_at?: string;
-  aade_updated_at?: string;
-  aade_invoice_mark?: string;
-  aade_status: 'pending' | 'submitted' | 'completed' | 'cancelled' | 'error';
-  aade_error_message?: string;
-  status: 'active' | 'completed' | 'cancelled';
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SupabaseDamagePoint {
-  id: string;
-  contract_id: string;
-  location: string;
-  description?: string;
-  severity: 'minor' | 'major' | 'critical';
-  estimated_cost: number;
-  photo_url?: string;
-  created_at: string;
-}
-
-export interface SupabaseContractPhoto {
-  id: string;
-  contract_id: string;
-  photo_url: string;
-  photo_type: 'pickup' | 'dropoff' | 'damage' | 'general';
-  description?: string;
-  created_at: string;
-}
-
+/**
+ * Supabase Contract Service
+ * Handles all contract-related database operations with correct schema mappings
+ */
 export class SupabaseContractService {
   /**
    * Get all contracts for the current user
@@ -67,8 +15,7 @@ export class SupabaseContractService {
         .from('contracts')
         .select(`
           *,
-          damage_points:damage_points(*),
-          contract_photos:contract_photos(*)
+          damage_points(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -77,7 +24,7 @@ export class SupabaseContractService {
         throw error;
       }
 
-      return contracts?.map(this.mapSupabaseToContract) || [];
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
     } catch (error) {
       console.error('Error in getAllContracts:', error);
       throw error;
@@ -93,8 +40,7 @@ export class SupabaseContractService {
         .from('contracts')
         .select(`
           *,
-          damage_points:damage_points(*),
-          contract_photos:contract_photos(*)
+          damage_points(*)
         `)
         .eq('id', id)
         .single();
@@ -112,82 +58,249 @@ export class SupabaseContractService {
   }
 
   /**
-   * Create a new contract
+   * Search contracts using full-text search
    */
-  static async createContract(contract: Omit<Contract, 'id'>): Promise<Contract> {
+  static async searchContracts(query: string): Promise<Contract[]> {
     try {
-      const supabaseContract = this.mapContractToSupabase(contract);
-      
-      const { data, error } = await supabase
+      const { data: contracts, error } = await supabase
         .from('contracts')
-        .insert(supabaseContract)
-        .select()
-        .single();
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .textSearch('search_vector', query, {
+          type: 'websearch',
+          config: 'greek'
+        })
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error creating contract:', error);
+        console.error('Error searching contracts:', error);
         throw error;
       }
 
-      // Create damage points if any
-      if (contract.damagePoints.length > 0) {
-        const damagePoints = contract.damagePoints.map(dp => ({
-          contract_id: data.id,
-          location: dp.location,
-          description: dp.description,
-          severity: dp.severity,
-          estimated_cost: dp.estimatedCost || 0,
-          photo_url: dp.photoUrl,
-        }));
-
-        await supabase
-          .from('damage_points')
-          .insert(damagePoints);
-      }
-
-      // Create photos if any
-      if (contract.photos && contract.photos.length > 0) {
-        const photos = contract.photos.map(photo => ({
-          contract_id: data.id,
-          photo_url: photo.url,
-          photo_type: photo.type || 'general',
-          description: photo.description,
-        }));
-
-        await supabase
-          .from('contract_photos')
-          .insert(photos);
-      }
-
-      return this.mapSupabaseToContract(data);
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
     } catch (error) {
-      console.error('Error in createContract:', error);
+      console.error('Error in searchContracts:', error);
       throw error;
     }
   }
 
   /**
-   * Update an existing contract
+   * Get contracts by date range
    */
-  static async updateContract(id: string, updates: Partial<Contract>): Promise<Contract> {
+  static async getContractsByDateRange(startDate: Date, endDate: Date): Promise<Contract[]> {
     try {
-      const supabaseUpdates = this.mapContractToSupabase(updates as Contract);
-      
-      const { data, error } = await supabase
+      const { data: contracts, error } = await supabase
         .from('contracts')
-        .update(supabaseUpdates)
-        .eq('id', id)
-        .select()
-        .single();
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .gte('pickup_date', startDate.toISOString())
+        .lte('dropoff_date', endDate.toISOString())
+        .order('pickup_date', { ascending: false });
 
       if (error) {
-        console.error('Error updating contract:', error);
+        console.error('Error fetching contracts by date range:', error);
         throw error;
       }
 
-      return this.mapSupabaseToContract(data);
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
     } catch (error) {
-      console.error('Error in updateContract:', error);
+      console.error('Error in getContractsByDateRange:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate contract status based on dates
+   */
+  private static calculateStatus(pickupDate: string, dropoffDate: string): 'active' | 'completed' | 'upcoming' {
+    const now = new Date();
+    const pickup = new Date(pickupDate);
+    const dropoff = new Date(dropoffDate);
+
+    if (now < pickup) {
+      return 'upcoming';
+    } else if (now >= pickup && now <= dropoff) {
+      return 'active';
+    } else {
+      return 'completed';
+    }
+  }
+
+  /**
+   * Map Supabase contract to our Contract interface
+   * Uses CORRECT schema field names
+   */
+  private static mapSupabaseToContract(data: any): Contract {
+    // Calculate status from dates (no status field in database)
+    const status = this.calculateStatus(data.pickup_date, data.dropoff_date);
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      
+      renterInfo: {
+        fullName: data.renter_full_name,
+        idNumber: data.renter_id_number,
+        taxId: data.renter_tax_id,
+        driverLicenseNumber: data.renter_driver_license_number,
+        phoneNumber: data.renter_phone_number,
+        email: data.renter_email || '',
+        address: data.renter_address,
+      },
+      
+      rentalPeriod: {
+        pickupDate: new Date(data.pickup_date),
+        pickupTime: data.pickup_time,
+        pickupLocation: data.pickup_location,
+        dropoffDate: new Date(data.dropoff_date),
+        dropoffTime: data.dropoff_time,
+        dropoffLocation: data.dropoff_location,
+        isDifferentDropoffLocation: data.is_different_dropoff_location || false,
+        totalCost: parseFloat(data.total_cost) || 0,
+      },
+      
+      carInfo: {
+        makeModel: data.car_make_model,
+        year: data.car_year,
+        licensePlate: data.car_license_plate,
+        mileage: data.car_mileage,
+      },
+      
+      carCondition: {
+        fuelLevel: data.fuel_level,
+        mileage: data.car_mileage,
+        insuranceType: data.insurance_type,
+      },
+      
+      damagePoints: data.damage_points?.map((dp: any) => ({
+        id: dp.id,
+        x: dp.x_position,
+        y: dp.y_position,
+        view: dp.view_side,
+        description: dp.description,
+        severity: dp.severity,
+        timestamp: new Date(dp.created_at),
+      })) || [],
+      
+      photoUris: [], // Photos stored separately in storage
+      clientSignature: data.client_signature_url || '',
+      
+      status,
+      createdAt: new Date(data.created_at),
+    };
+  }
+
+  /**
+   * Get active contracts (currently ongoing)
+   */
+  static async getActiveContracts(): Promise<Contract[]> {
+    try {
+      const now = new Date().toISOString();
+      
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .lte('pickup_date', now)
+        .gte('dropoff_date', now)
+        .order('pickup_date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching active contracts:', error);
+        throw error;
+      }
+
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
+    } catch (error) {
+      console.error('Error in getActiveContracts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get completed contracts
+   */
+  static async getCompletedContracts(): Promise<Contract[]> {
+    try {
+      const now = new Date().toISOString();
+      
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .lt('dropoff_date', now)
+        .order('dropoff_date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching completed contracts:', error);
+        throw error;
+      }
+
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
+    } catch (error) {
+      console.error('Error in getCompletedContracts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get upcoming contracts
+   */
+  static async getUpcomingContracts(): Promise<Contract[]> {
+    try {
+      const now = new Date().toISOString();
+      
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .gt('pickup_date', now)
+        .order('pickup_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching upcoming contracts:', error);
+        throw error;
+      }
+
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
+    } catch (error) {
+      console.error('Error in getUpcomingContracts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get contracts by car license plate
+   */
+  static async getContractsByCarLicensePlate(licensePlate: string): Promise<Contract[]> {
+    try {
+      const { data: contracts, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points(*)
+        `)
+        .eq('car_license_plate', licensePlate)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching contracts by car:', error);
+        throw error;
+      }
+
+      return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
+    } catch (error) {
+      console.error('Error in getContractsByCarLicensePlate:', error);
       throw error;
     }
   }
@@ -213,177 +326,21 @@ export class SupabaseContractService {
   }
 
   /**
-   * Search contracts
+   * Bulk delete contracts
    */
-  static async searchContracts(query: string): Promise<Contract[]> {
-    try {
-      const { data: contracts, error } = await supabase
-        .from('contracts')
-        .select(`
-          *,
-          damage_points:damage_points(*),
-          contract_photos:contract_photos(*)
-        `)
-        .or(`renter_name.ilike.%${query}%,car_license_plate.ilike.%${query}%,car_make.ilike.%${query}%,car_model.ilike.%${query}%`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error searching contracts:', error);
-        throw error;
-      }
-
-      return contracts?.map(this.mapSupabaseToContract) || [];
-    } catch (error) {
-      console.error('Error in searchContracts:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get contracts by status
-   */
-  static async getContractsByStatus(status: 'active' | 'completed' | 'cancelled'): Promise<Contract[]> {
-    try {
-      const { data: contracts, error } = await supabase
-        .from('contracts')
-        .select(`
-          *,
-          damage_points:damage_points(*),
-          contract_photos:contract_photos(*)
-        `)
-        .eq('status', status)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching contracts by status:', error);
-        throw error;
-      }
-
-      return contracts?.map(this.mapSupabaseToContract) || [];
-    } catch (error) {
-      console.error('Error in getContractsByStatus:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Map Supabase contract to our Contract interface
-   */
-  private static mapSupabaseToContract(data: any): Contract {
-    return {
-      id: data.id,
-      renterInfo: {
-        fullName: data.renter_name,
-        email: data.renter_email || '',
-        phone: data.renter_phone || '',
-        address: data.renter_address || '',
-        idNumber: data.renter_id_number || '',
-        drivingLicense: data.renter_driving_license || '',
-      },
-      rentalPeriod: {
-        pickupDate: new Date(data.pickup_date),
-        pickupTime: data.pickup_time,
-        pickupLocation: data.pickup_location,
-        dropoffDate: new Date(data.dropoff_date),
-        dropoffTime: data.dropoff_time,
-        dropoffLocation: data.dropoff_location || '',
-        totalCost: data.total_cost || 0,
-      },
-      carInfo: {
-        make: data.car_make || '',
-        model: data.car_model || '',
-        makeModel: data.car_make && data.car_model ? `${data.car_make} ${data.car_model}` : '',
-        licensePlate: data.car_license_plate || '',
-        color: data.car_color || '',
-      },
-      carCondition: {
-        fuelLevel: data.fuel_level || 8,
-        mileageStart: data.mileage_start || 0,
-        mileageEnd: data.mileage_end,
-        conditionNotes: data.condition_notes || '',
-      },
-      damagePoints: data.damage_points?.map((dp: any) => ({
-        id: dp.id,
-        location: dp.location,
-        description: dp.description || '',
-        severity: dp.severity,
-        estimatedCost: dp.estimated_cost || 0,
-        photoUrl: dp.photo_url || '',
-      })) || [],
-      photos: data.contract_photos?.map((photo: any) => ({
-        id: photo.id,
-        url: photo.photo_url,
-        type: photo.photo_type,
-        description: photo.description || '',
-      })) || [],
-      aade: {
-        dclId: data.aade_dcl_id,
-        submittedAt: data.aade_submitted_at ? new Date(data.aade_submitted_at) : undefined,
-        updatedAt: data.aade_updated_at ? new Date(data.aade_updated_at) : undefined,
-        invoiceMark: data.aade_invoice_mark,
-        status: data.aade_status,
-        errorMessage: data.aade_error_message,
-      },
-      status: data.status,
-      notes: data.notes || '',
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    };
-  }
-
-  /**
-   * Map our Contract interface to Supabase format
-   */
-  private static mapContractToSupabase(contract: Contract): Partial<SupabaseContract> {
-    return {
-      renter_name: contract.renterInfo.fullName,
-      renter_email: contract.renterInfo.email,
-      renter_phone: contract.renterInfo.phone,
-      renter_address: contract.renterInfo.address,
-      renter_id_number: contract.renterInfo.idNumber,
-      renter_driving_license: contract.renterInfo.drivingLicense,
-      pickup_date: contract.rentalPeriod.pickupDate.toISOString().split('T')[0],
-      pickup_time: contract.rentalPeriod.pickupTime,
-      pickup_location: contract.rentalPeriod.pickupLocation,
-      dropoff_date: contract.rentalPeriod.dropoffDate.toISOString().split('T')[0],
-      dropoff_time: contract.rentalPeriod.dropoffTime,
-      dropoff_location: contract.rentalPeriod.dropoffLocation,
-      total_cost: contract.rentalPeriod.totalCost || 0,
-      car_make: contract.carInfo.make,
-      car_model: contract.carInfo.model,
-      car_license_plate: contract.carInfo.licensePlate,
-      car_color: contract.carInfo.color,
-      fuel_level: contract.carCondition?.fuelLevel || 8,
-      mileage_start: contract.carCondition?.mileageStart || 0,
-      mileage_end: contract.carCondition?.mileageEnd,
-      condition_notes: contract.carCondition?.conditionNotes,
-      aade_dcl_id: contract.aade?.dclId,
-      aade_submitted_at: contract.aade?.submittedAt?.toISOString(),
-      aade_updated_at: contract.aade?.updatedAt?.toISOString(),
-      aade_invoice_mark: contract.aade?.invoiceMark,
-      aade_status: contract.aade?.status || 'pending',
-      aade_error_message: contract.aade?.errorMessage,
-      status: contract.status || 'active',
-      notes: contract.notes,
-    };
-  }
-
-  /**
-   * Update contract status
-   */
-  static async updateContractStatus(id: string, status: string): Promise<void> {
+  static async bulkDeleteContracts(ids: string[]): Promise<void> {
     try {
       const { error } = await supabase
         .from('contracts')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .delete()
+        .in('id', ids);
 
       if (error) {
-        console.error('Error updating contract status:', error);
+        console.error('Error bulk deleting contracts:', error);
         throw error;
       }
     } catch (error) {
-      console.error('Error in updateContractStatus:', error);
+      console.error('Error in bulkDeleteContracts:', error);
       throw error;
     }
   }

@@ -8,46 +8,118 @@ import {
   TextInput,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
+import { Breadcrumb } from '../components/breadcrumb';
 import { ContextAwareFab } from '../components/context-aware-fab';
 import { DamageTemplateSelector } from '../components/damage-template-selector';
 import { PhotoCaptureService } from '../services/photo-capture.service';
 import { DamageTemplateService, DamageTemplate } from '../services/damage-template.service';
 import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { supabase } from '../utils/supabase';
+import { format } from 'date-fns';
+import { el } from 'date-fns/locale';
 
 interface DamageReport {
   id: string;
   contractId: string;
-  carId: string;
-  damageType: 'scratch' | 'dent' | 'crack' | 'other';
+  xPosition: number;
+  yPosition: number;
+  viewSide: 'front' | 'rear' | 'left' | 'right';
   severity: 'minor' | 'moderate' | 'severe';
-  location: string;
   description: string;
-  estimatedCost: number;
-  photos: string[];
-  reportedBy: string;
-  reportedAt: Date;
-  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+  contractRenterName?: string;
+  carLicensePlate?: string;
 }
 
 export default function DamageReportScreen() {
   const router = useRouter();
   const [damageReports, setDamageReports] = useState<DamageReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [newReport, setNewReport] = useState<Partial<DamageReport>>({
-    damageType: 'scratch',
     severity: 'minor',
-    location: '',
     description: '',
-    estimatedCost: 0,
-    photos: [],
-    status: 'pending',
+    viewSide: 'front',
+    xPosition: 50,
+    yPosition: 50,
   });
+
+  useEffect(() => {
+    loadDamages();
+  }, []);
+
+  async function loadDamages() {
+    try {
+      setLoading(true);
+      
+      console.log('Loading damages from Supabase...');
+      
+      // Load all damage points with contract information
+      const { data, error } = await supabase
+        .from('damage_points')
+        .select(`
+          *,
+          contracts!inner(
+            renter_full_name,
+            car_license_plate
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      console.log('Damages query result:', { data, error });
+
+      if (error) {
+        console.error('Error loading damages:', error);
+        Alert.alert('Σφάλμα', `Αποτυχία φόρτωσης ζημιών: ${error.message}`);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No damages found in database');
+        Alert.alert(
+          'Δεν υπάρχουν δεδομένα',
+          'Δεν βρέθηκαν ζημιές στη βάση δεδομένων. Βεβαιωθείτε ότι έχετε εκτελέσει το SQL script: supabase/insert-example-contracts-and-damages.sql'
+        );
+        setDamageReports([]);
+        return;
+      }
+
+      const mappedDamages: DamageReport[] = data?.map(d => ({
+        id: d.id,
+        contractId: d.contract_id,
+        xPosition: d.x_position,
+        yPosition: d.y_position,
+        viewSide: d.view_side,
+        description: d.description,
+        severity: d.severity,
+        createdAt: new Date(d.created_at),
+        contractRenterName: d.contracts?.renter_full_name,
+        carLicensePlate: d.contracts?.car_license_plate,
+      })) || [];
+
+      console.log(`Loaded ${mappedDamages.length} damages successfully`);
+      setDamageReports(mappedDamages);
+    } catch (error) {
+      console.error('Error loading damages:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης ζημιών');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadDamages();
+    setRefreshing(false);
+  }
 
   const damageTypes = [
     { id: 'scratch', label: 'Γρατζουνιά', icon: '🔸' },
@@ -100,13 +172,26 @@ export default function DamageReportScreen() {
 
   function renderDamageReport(report: DamageReport) {
     const severityInfo = severityLevels.find(s => s.id === report.severity);
-    const damageTypeInfo = damageTypes.find(d => d.id === report.damageType);
+    
+    const viewSideLabel = {
+      front: 'Μπροστά',
+      rear: 'Πίσω',
+      left: 'Αριστερά',
+      right: 'Δεξιά',
+    }[report.viewSide];
 
     return (
-      <View key={report.id} style={styles.reportCard}>
+      <TouchableOpacity 
+        key={report.id} 
+        style={[styles.reportCard, Glassmorphism.light]}
+        onPress={() => router.push(`/contract-details?contractId=${report.contractId}`)}
+        activeOpacity={0.7}
+      >
         <View style={styles.reportHeader}>
           <View style={styles.reportMainInfo}>
-            <Text style={styles.reportLocation}>{report.location}</Text>
+            <Text style={styles.reportLocation}>
+              {report.carLicensePlate || 'N/A'} - {viewSideLabel}
+            </Text>
             <Text style={styles.reportDescription} numberOfLines={2}>
               {report.description}
             </Text>
@@ -118,32 +203,29 @@ export default function DamageReportScreen() {
 
         <View style={styles.reportDetails}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Τύπος:</Text>
+            <Text style={styles.detailLabel}>Ενοικιαστής:</Text>
             <Text style={styles.detailValue}>
-              {damageTypeInfo?.icon} {damageTypeInfo?.label}
+              {report.contractRenterName || 'N/A'}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Εκτιμώμενο Κόστος:</Text>
-            <Text style={styles.detailValue}>€{report.estimatedCost}</Text>
+            <Text style={styles.detailLabel}>Θέση:</Text>
+            <Text style={styles.detailValue}>
+              X: {report.xPosition.toFixed(1)}%, Y: {report.yPosition.toFixed(1)}%
+            </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Ημερομηνία:</Text>
             <Text style={styles.detailValue}>
-              {report.reportedAt.toLocaleDateString('el-GR')}
+              {format(report.createdAt, 'dd/MM/yyyy HH:mm', { locale: el })}
             </Text>
           </View>
         </View>
 
         <View style={styles.reportFooter}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) }]}>
-            <Text style={styles.statusText}>{getStatusLabel(report.status)}</Text>
-          </View>
-          {report.photos.length > 0 && (
-            <Text style={styles.photosCount}>📷 {report.photos.length} φωτογραφίες</Text>
-          )}
+          <Text style={styles.viewContractText}>👁️ Δείτε Συμβόλαιο</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   }
 
@@ -181,24 +263,39 @@ export default function DamageReportScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Καταγραφή Ζημιών" showActions={true} />
       
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: 'Αρχική', path: '/' },
+          { label: 'Καταγραφή Ζημιών' },
+        ]}
+      />
+      
       <ScrollView 
-        style={styles.scrollContainer} 
-        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollContainer}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: Colors.warning }]}>
-            <Text style={styles.statValue}>{damageReports.filter(r => r.status === 'pending').length}</Text>
-            <Text style={styles.statLabel}>Εκκρεμείς</Text>
+          <View style={[styles.statCard, { backgroundColor: Colors.primary }]}>
+            <Text style={styles.statValue}>{damageReports.length}</Text>
+            <Text style={styles.statLabel}>Συνολικές</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.success }]}>
-            <Text style={styles.statValue}>{damageReports.filter(r => r.status === 'approved').length}</Text>
-            <Text style={styles.statLabel}>Εγκεκριμένες</Text>
+          <View style={[styles.statCard, { backgroundColor: Colors.warning }]}>
+            <Text style={styles.statValue}>{damageReports.filter(r => r.severity === 'minor').length}</Text>
+            <Text style={styles.statLabel}>Μικρές</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: '#FF9800' }]}>
+            <Text style={styles.statValue}>{damageReports.filter(r => r.severity === 'moderate').length}</Text>
+            <Text style={styles.statLabel}>Μέτριες</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: Colors.error }]}>
-            <Text style={styles.statValue}>{damageReports.filter(r => r.status === 'rejected').length}</Text>
-            <Text style={styles.statLabel}>Απορριφθείσες</Text>
+            <Text style={styles.statValue}>{damageReports.filter(r => r.severity === 'severe').length}</Text>
+            <Text style={styles.statLabel}>Σοβαρές</Text>
           </View>
         </View>
 
@@ -570,8 +667,17 @@ const styles = StyleSheet.create({
   },
   reportFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  viewContractText: {
+    ...Typography.bodySmall,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: Spacing.sm,
