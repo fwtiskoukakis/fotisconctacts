@@ -165,20 +165,26 @@ export default function UserManagementScreen() {
   function handleSignatureSave(uri: string) {
     setNewUserSignature(uri);
     
-    // Also read the SVG content to store paths for display
-    FileSystem.readAsStringAsync(uri).then(svgContent => {
-      // Extract paths from SVG content
-      const pathMatches = svgContent.match(/<path[^>]*d="([^"]*)"[^>]*>/g);
-      if (pathMatches) {
-        const paths = pathMatches.map(match => {
-          const dMatch = match.match(/d="([^"]*)"/);
-          return dMatch ? dMatch[1] : '';
-        }).filter(path => path !== '');
-        setNewUserSignaturePaths(paths);
+    try {
+      // Decode base64 data URI to get SVG content
+      // URI format: data:image/svg+xml;base64,XXX
+      if (uri.startsWith('data:image/svg+xml;base64,')) {
+        const base64Data = uri.split(',')[1];
+        const svgContent = decodeURIComponent(escape(atob(base64Data)));
+        
+        // Extract paths from SVG content
+        const pathMatches = svgContent.match(/<path[^>]*d="([^"]*)"[^>]*>/g);
+        if (pathMatches) {
+          const paths = pathMatches.map(match => {
+            const dMatch = match.match(/d="([^"]*)"/);
+            return dMatch ? dMatch[1] : '';
+          }).filter(path => path !== '');
+          setNewUserSignaturePaths(paths);
+        }
       }
-    }).catch(error => {
-      console.error('Error reading signature file:', error);
-    });
+    } catch (error) {
+      console.error('Error parsing signature data:', error);
+    }
   }
 
   function formatDate(date: Date): string {

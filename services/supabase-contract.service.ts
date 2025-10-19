@@ -183,6 +183,7 @@ export class SupabaseContractService {
         view: dp.view_side,
         description: dp.description,
         severity: dp.severity,
+        markerType: dp.marker_type || 'slight-scratch',
         timestamp: new Date(dp.created_at),
       })) || [],
       
@@ -303,6 +304,184 @@ export class SupabaseContractService {
       return contracts?.map((c) => this.mapSupabaseToContract(c)) || [];
     } catch (error) {
       console.error('Error in getContractsByCarLicensePlate:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save a new contract
+   */
+  static async saveContract(contract: Contract): Promise<Contract> {
+    try {
+      // First, insert the contract
+      const contractData = {
+        id: contract.id,
+        user_id: contract.userId,
+        
+        // Renter info
+        renter_full_name: contract.renterInfo.fullName,
+        renter_id_number: contract.renterInfo.idNumber,
+        renter_tax_id: contract.renterInfo.taxId,
+        renter_driver_license_number: contract.renterInfo.driverLicenseNumber,
+        renter_phone_number: contract.renterInfo.phoneNumber,
+        renter_email: contract.renterInfo.email,
+        renter_address: contract.renterInfo.address,
+        
+        // Rental period
+        pickup_date: contract.rentalPeriod.pickupDate.toISOString(),
+        pickup_time: contract.rentalPeriod.pickupTime,
+        pickup_location: contract.rentalPeriod.pickupLocation,
+        dropoff_date: contract.rentalPeriod.dropoffDate.toISOString(),
+        dropoff_time: contract.rentalPeriod.dropoffTime,
+        dropoff_location: contract.rentalPeriod.dropoffLocation,
+        is_different_dropoff_location: contract.rentalPeriod.isDifferentDropoffLocation,
+        total_cost: contract.rentalPeriod.totalCost,
+        
+        // Car info
+        car_make_model: contract.carInfo.makeModel,
+        car_year: contract.carInfo.year,
+        car_license_plate: contract.carInfo.licensePlate,
+        car_mileage: contract.carCondition?.mileage || contract.carInfo.mileage || 0,
+        
+        // Car condition
+        fuel_level: contract.carCondition.fuelLevel,
+        insurance_type: contract.carCondition.insuranceType,
+        
+        // Signature
+        client_signature_url: contract.clientSignature,
+        
+        // AADE
+        aade_status: contract.aadeStatus || null,
+        aade_dcl_id: contract.aadeDclId || null,
+      };
+
+      const { data: savedContract, error: contractError } = await supabase
+        .from('contracts')
+        .insert(contractData)
+        .select()
+        .single();
+
+      if (contractError) {
+        console.error('Error saving contract:', contractError);
+        throw contractError;
+      }
+
+      // Then, insert damage points if any
+      if (contract.damagePoints && contract.damagePoints.length > 0) {
+        const damagePointsData = contract.damagePoints.map(dp => ({
+          contract_id: contract.id,
+          x_position: dp.x,
+          y_position: dp.y,
+          view_side: dp.view,
+          description: dp.description || '',
+          severity: dp.severity,
+          marker_type: dp.markerType,
+        }));
+
+        const { error: damageError } = await supabase
+          .from('damage_points')
+          .insert(damagePointsData);
+
+        if (damageError) {
+          console.error('Error saving damage points:', damageError);
+          // Don't throw, contract is already saved
+        }
+      }
+
+      return this.mapSupabaseToContract(savedContract);
+    } catch (error) {
+      console.error('Error in saveContract:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing contract
+   */
+  static async updateContract(id: string, contract: Contract): Promise<Contract> {
+    try {
+      // Update the contract
+      const contractData = {
+        user_id: contract.userId,
+        
+        // Renter info
+        renter_full_name: contract.renterInfo.fullName,
+        renter_id_number: contract.renterInfo.idNumber,
+        renter_tax_id: contract.renterInfo.taxId,
+        renter_driver_license_number: contract.renterInfo.driverLicenseNumber,
+        renter_phone_number: contract.renterInfo.phoneNumber,
+        renter_email: contract.renterInfo.email,
+        renter_address: contract.renterInfo.address,
+        
+        // Rental period
+        pickup_date: contract.rentalPeriod.pickupDate.toISOString(),
+        pickup_time: contract.rentalPeriod.pickupTime,
+        pickup_location: contract.rentalPeriod.pickupLocation,
+        dropoff_date: contract.rentalPeriod.dropoffDate.toISOString(),
+        dropoff_time: contract.rentalPeriod.dropoffTime,
+        dropoff_location: contract.rentalPeriod.dropoffLocation,
+        is_different_dropoff_location: contract.rentalPeriod.isDifferentDropoffLocation,
+        total_cost: contract.rentalPeriod.totalCost,
+        
+        // Car info
+        car_make_model: contract.carInfo.makeModel,
+        car_year: contract.carInfo.year,
+        car_license_plate: contract.carInfo.licensePlate,
+        car_mileage: contract.carCondition?.mileage || contract.carInfo.mileage || 0,
+        
+        // Car condition
+        fuel_level: contract.carCondition.fuelLevel,
+        insurance_type: contract.carCondition.insuranceType,
+        
+        // Signature
+        client_signature_url: contract.clientSignature,
+        
+        // AADE
+        aade_status: contract.aadeStatus || null,
+        aade_dcl_id: contract.aadeDclId || null,
+      };
+
+      const { data: updatedContract, error: contractError } = await supabase
+        .from('contracts')
+        .update(contractData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (contractError) {
+        console.error('Error updating contract:', contractError);
+        throw contractError;
+      }
+
+      // Delete old damage points and insert new ones
+      await supabase
+        .from('damage_points')
+        .delete()
+        .eq('contract_id', id);
+
+      if (contract.damagePoints && contract.damagePoints.length > 0) {
+        const damagePointsData = contract.damagePoints.map(dp => ({
+          contract_id: id,
+          x_position: dp.x,
+          y_position: dp.y,
+          view_side: dp.view,
+          description: dp.description || '',
+          severity: dp.severity,
+          marker_type: dp.markerType,
+        }));
+
+        const { error: damageError } = await supabase
+          .from('damage_points')
+          .insert(damagePointsData);
+
+        if (damageError) {
+          console.error('Error saving damage points:', damageError);
+        }
+      }
+
+      return this.mapSupabaseToContract(updatedContract);
+    } catch (error) {
+      console.error('Error in updateContract:', error);
       throw error;
     }
   }

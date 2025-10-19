@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, Image } from 'react-native';
-import { DamagePoint } from '../models/contract.interface';
+import { DamagePoint, DamageMarkerType } from '../models/contract.interface';
+import Svg, { Line, Rect, Path } from 'react-native-svg';
 
 interface CarDiagramProps {
-  onAddDamage: (x: number, y: number, view: 'front' | 'rear' | 'left' | 'right') => void;
+  onAddDamage: (x: number, y: number, view: 'front' | 'rear' | 'left' | 'right', markerType: DamageMarkerType) => void;
+  onRemoveLastDamage?: () => void;
   damagePoints: DamagePoint[];
   isEditable?: boolean;
   onVehicleTypeChange?: (type: VehicleType) => void;
@@ -22,11 +24,11 @@ const vehicleImages = {
  * Interactive vehicle diagram component
  * Choose between Car, Scooter, or ATV diagrams
  */
-export function CarDiagram({ onAddDamage, damagePoints, isEditable = true, onVehicleTypeChange }: CarDiagramProps) {
+export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEditable = true, onVehicleTypeChange }: CarDiagramProps) {
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
-  const { width } = Dimensions.get('window');
-  const diagramWidth = width - 40;
-  const diagramHeight = diagramWidth * 1.2;
+  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
+  const [selectedMarkerType, setSelectedMarkerType] = useState<DamageMarkerType>('slight-scratch');
+  const containerRef = useRef<View>(null);
   
   function handleVehicleTypeChange(type: VehicleType) {
     setVehicleType(type);
@@ -34,14 +36,117 @@ export function CarDiagram({ onAddDamage, damagePoints, isEditable = true, onVeh
   }
 
   function handlePress(event: any) {
-    if (!isEditable) return;
+    if (!isEditable || !imageLayout.width || !imageLayout.height) return;
     
     const { locationX, locationY } = event.nativeEvent;
-    const xPercent = (locationX / diagramWidth) * 100;
-    const yPercent = (locationY / diagramHeight) * 100;
+    
+    // Calculate position relative to the actual image, accounting for padding and centering
+    const containerPadding = 10;
+    const adjustedX = locationX - containerPadding - imageLayout.x;
+    const adjustedY = locationY - containerPadding - imageLayout.y;
+    
+    // Convert to percentage relative to actual image dimensions
+    const xPercent = (adjustedX / imageLayout.width) * 100;
+    const yPercent = (adjustedY / imageLayout.height) * 100;
+    
+    // Ensure the coordinates are within bounds (0-100%)
+    const clampedX = Math.max(0, Math.min(100, xPercent));
+    const clampedY = Math.max(0, Math.min(100, yPercent));
     
     // For now, we'll use 'front' as default view for all vehicle types
-    onAddDamage(xPercent, yPercent, 'front');
+    onAddDamage(clampedX, clampedY, 'front', selectedMarkerType);
+  }
+
+  function handleImageLayout(event: any) {
+    const { width, height, x, y } = event.nativeEvent.layout;
+    setImageLayout({ width, height, x, y });
+  }
+
+  function renderDamageMarker(damage: DamagePoint) {
+    const size = 20;
+    const color = '#FF0000';
+    
+    switch (damage.markerType) {
+      case 'slight-scratch':
+        // Small thin line
+        return (
+          <Svg
+            key={damage.id}
+            width={size}
+            height={size}
+            style={[
+              styles.damageMarkerSvg,
+              {
+                left: `${damage.x}%`,
+                top: `${damage.y}%`,
+              }
+            ]}
+          >
+            <Line x1="2" y1="10" x2="18" y2="10" stroke={color} strokeWidth="1.5" />
+          </Svg>
+        );
+      
+      case 'heavy-scratch':
+        // Bold thick line
+        return (
+          <Svg
+            key={damage.id}
+            width={size}
+            height={size}
+            style={[
+              styles.damageMarkerSvg,
+              {
+                left: `${damage.x}%`,
+                top: `${damage.y}%`,
+              }
+            ]}
+          >
+            <Line x1="2" y1="10" x2="18" y2="10" stroke={color} strokeWidth="3.5" />
+          </Svg>
+        );
+      
+      case 'bent':
+        // Square
+        return (
+          <Svg
+            key={damage.id}
+            width={size}
+            height={size}
+            style={[
+              styles.damageMarkerSvg,
+              {
+                left: `${damage.x}%`,
+                top: `${damage.y}%`,
+              }
+            ]}
+          >
+            <Rect x="3" y="3" width="14" height="14" stroke={color} strokeWidth="2" fill="none" />
+          </Svg>
+        );
+      
+      case 'broken':
+        // X mark
+        return (
+          <Svg
+            key={damage.id}
+            width={size}
+            height={size}
+            style={[
+              styles.damageMarkerSvg,
+              {
+                left: `${damage.x}%`,
+                top: `${damage.y}%`,
+              }
+            ]}
+          >
+            <Line x1="3" y1="3" x2="17" y2="17" stroke={color} strokeWidth="2.5" />
+            <Line x1="17" y1="3" x2="3" y2="17" stroke={color} strokeWidth="2.5" />
+          </Svg>
+        );
+      
+      default:
+        return null;
+    }
   }
 
   return (
@@ -78,39 +183,108 @@ export function CarDiagram({ onAddDamage, damagePoints, isEditable = true, onVeh
         </TouchableOpacity>
       </View>
 
+      {/* Damage Marker Type Selector */}
+      <View style={styles.markerSection}>
+        <Text style={styles.markerLabel}>Τύπος Ζημιάς:</Text>
+        <View style={styles.markerButtonContainer}>
+          <TouchableOpacity
+            style={[styles.markerButton, selectedMarkerType === 'slight-scratch' && styles.activeMarkerButton]}
+            onPress={() => setSelectedMarkerType('slight-scratch')}
+          >
+            <Svg width="20" height="20">
+              <Line x1="2" y1="10" x2="18" y2="10" stroke={selectedMarkerType === 'slight-scratch' ? '#fff' : '#666'} strokeWidth="1.5" />
+            </Svg>
+            <Text style={[styles.markerButtonText, selectedMarkerType === 'slight-scratch' && styles.activeMarkerButtonText]}>
+              Γρατζουνιά
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.markerButton, selectedMarkerType === 'heavy-scratch' && styles.activeMarkerButton]}
+            onPress={() => setSelectedMarkerType('heavy-scratch')}
+          >
+            <Svg width="20" height="20">
+              <Line x1="2" y1="10" x2="18" y2="10" stroke={selectedMarkerType === 'heavy-scratch' ? '#fff' : '#666'} strokeWidth="3.5" />
+            </Svg>
+            <Text style={[styles.markerButtonText, selectedMarkerType === 'heavy-scratch' && styles.activeMarkerButtonText]}>
+              Βαθιά
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.markerButton, selectedMarkerType === 'bent' && styles.activeMarkerButton]}
+            onPress={() => setSelectedMarkerType('bent')}
+          >
+            <Svg width="20" height="20">
+              <Rect x="3" y="3" width="14" height="14" stroke={selectedMarkerType === 'bent' ? '#fff' : '#666'} strokeWidth="2" fill="none" />
+            </Svg>
+            <Text style={[styles.markerButtonText, selectedMarkerType === 'bent' && styles.activeMarkerButtonText]}>
+              Λαμαρίνα
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.markerButton, selectedMarkerType === 'broken' && styles.activeMarkerButton]}
+            onPress={() => setSelectedMarkerType('broken')}
+          >
+            <Svg width="20" height="20">
+              <Line x1="3" y1="3" x2="17" y2="17" stroke={selectedMarkerType === 'broken' ? '#fff' : '#666'} strokeWidth="2.5" />
+              <Line x1="17" y1="3" x2="3" y2="17" stroke={selectedMarkerType === 'broken' ? '#fff' : '#666'} strokeWidth="2.5" />
+            </Svg>
+            <Text style={[styles.markerButtonText, selectedMarkerType === 'broken' && styles.activeMarkerButtonText]}>
+              Σπασμένο
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Vehicle Diagram Image */}
       <TouchableOpacity 
         onPress={handlePress} 
         activeOpacity={0.9}
         disabled={!isEditable}
         style={styles.diagramContainer}
+        ref={containerRef}
       >
         <Image
           source={vehicleImages[vehicleType]}
           style={styles.vehicleImage}
           resizeMode="contain"
+          onLayout={handleImageLayout}
         />
         
         {/* Damage markers overlaid on image */}
-        <View style={styles.damageOverlay}>
-          {damagePoints.map((damage) => (
-            <View
-              key={damage.id}
-              style={[
-                styles.damageMarker,
-                {
-                  left: `${damage.x}%`,
-                  top: `${damage.y}%`,
-                }
-              ]}
-            />
-          ))}
-        </View>
+        {imageLayout.width > 0 && (
+          <View 
+            style={[
+              styles.damageOverlay,
+              {
+                left: imageLayout.x + 10,
+                top: imageLayout.y + 10,
+                width: imageLayout.width,
+                height: imageLayout.height,
+              }
+            ]}
+          >
+            {damagePoints.map((damage) => renderDamageMarker(damage))}
+          </View>
+        )}
       </TouchableOpacity>
       
-      <Text style={styles.hint}>
-        Πατήστε στο διάγραμμα για να σημειώσετε ζημιές
-      </Text>
+      {/* Undo Button and Hint */}
+      <View style={styles.footerContainer}>
+        <Text style={styles.hint}>
+          Πατήστε στο διάγραμμα για να σημειώσετε ζημιές
+        </Text>
+        {damagePoints.length > 0 && onRemoveLastDamage && (
+          <TouchableOpacity
+            style={styles.undoButton}
+            onPress={onRemoveLastDamage}
+          >
+            <Text style={styles.undoButtonText}>↶ Αναίρεση</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -175,30 +349,74 @@ const styles = StyleSheet.create({
   },
   damageOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     pointerEvents: 'none',
   },
-  damageMarker: {
+  damageMarkerSvg: {
     position: 'absolute',
-    width: 16,
-    height: 16,
+    marginLeft: -10,
+    marginTop: -10,
+  },
+  markerSection: {
+    marginBottom: 15,
+  },
+  markerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 10,
+  },
+  markerButtonContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  markerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#f0f0f0',
     borderRadius: 8,
-    backgroundColor: '#FF0000',
     borderWidth: 2,
-    borderColor: '#8B0000',
-    marginLeft: -8,
-    marginTop: -8,
-    opacity: 0.85,
+    borderColor: '#ddd',
+    minWidth: 90,
+  },
+  activeMarkerButton: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  markerButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeMarkerButtonText: {
+    color: '#fff',
+  },
+  footerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
   },
   hint: {
-    marginTop: 15,
+    flex: 1,
     fontSize: 13,
     color: '#666',
-    textAlign: 'center',
     fontStyle: 'italic',
+  },
+  undoButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  undoButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });
 

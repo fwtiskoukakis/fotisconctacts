@@ -34,6 +34,8 @@ export interface CarInfo {
   category?: string; // Vehicle category: car, atv, scooter, motorcycle
 }
 
+export type DamageMarkerType = 'slight-scratch' | 'heavy-scratch' | 'bent' | 'broken';
+
 export interface DamagePoint {
   id: string;
   x: number; // percentage position
@@ -41,6 +43,7 @@ export interface DamagePoint {
   view: 'front' | 'rear' | 'left' | 'right'; // which side of the car
   description: string;
   severity: 'minor' | 'moderate' | 'severe';
+  markerType: DamageMarkerType; // Type of damage marker
   timestamp: Date;
 }
 

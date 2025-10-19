@@ -14,11 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Contract, RenterInfo, RentalPeriod, CarInfo, DamagePoint, CarCondition } from '../models/contract.interface';
+import { Contract, RenterInfo, RentalPeriod, CarInfo, DamagePoint, DamageMarkerType, CarCondition } from '../models/contract.interface';
 import { CarDiagram } from '../components/car-diagram';
 import { PhotoCapture } from '../components/photo-capture';
 import { ImageModal } from '../components/image-modal';
-import { ContractStorageService } from '../services/contract-storage.service';
+import { SupabaseContractService } from '../services/supabase-contract.service';
 import { format } from 'date-fns';
 
 type CarView = 'front' | 'rear' | 'left' | 'right';
@@ -53,7 +53,7 @@ export default function EditContractScreen() {
         return;
       }
 
-      const foundContract = await ContractStorageService.getContractById(params.contractId);
+      const foundContract = await SupabaseContractService.getContractById(params.contractId);
       
       if (foundContract) {
         setContract(foundContract);
@@ -69,21 +69,31 @@ export default function EditContractScreen() {
     }
   }
 
-  function handleAddDamage(x: number, y: number, view: CarView) {
+  function handleAddDamage(x: number, y: number, view: CarView, markerType: DamageMarkerType) {
     if (!contract) return;
     
     const newDamage: DamagePoint = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `damage-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       x,
       y,
       view,
       description: '',
       severity: 'minor',
+      markerType,
       timestamp: new Date(),
     };
     setContract({
       ...contract,
       damagePoints: [...contract.damagePoints, newDamage]
+    });
+  }
+
+  function handleRemoveLastDamage() {
+    if (!contract || contract.damagePoints.length === 0) return;
+    
+    setContract({
+      ...contract,
+      damagePoints: contract.damagePoints.slice(0, -1)
     });
   }
 
@@ -172,7 +182,7 @@ export default function EditContractScreen() {
     };
 
     try {
-      await ContractStorageService.saveContract(updatedContract);
+      await SupabaseContractService.updateContract(updatedContract.id, updatedContract);
       Alert.alert('Επιτυχία', 'Το συμβόλαιο ενημερώθηκε επιτυχώς!');
       router.push('/');
     } catch (error) {
@@ -533,7 +543,11 @@ export default function EditContractScreen() {
 
         {/* 4. Car Diagram for Damages */}
         <View style={styles.section}>
-          <CarDiagram onAddDamage={handleAddDamage} damagePoints={contract.damagePoints} />
+          <CarDiagram 
+            onAddDamage={handleAddDamage} 
+            onRemoveLastDamage={handleRemoveLastDamage}
+            damagePoints={contract.damagePoints} 
+          />
         </View>
 
         {/* 5. Photos */}

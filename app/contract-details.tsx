@@ -190,8 +190,8 @@ export default function ContractDetailsScreen() {
           <View style={s.card}>
             <InfoRow icon="car" label="Όχημα" value={contract.carInfo?.makeModel || 'N/A'} />
             <InfoRow icon="pricetag" label="Πινακίδα" value={contract.carInfo?.licensePlate || 'N/A'} />
-            <InfoRow icon="speedometer" label="Χιλιόμετρα" value={`${contract.carInfo?.mileage || 0} km`} />
-            <InfoRow icon="water" label="Καύσιμο" value={`${contract.carInfo?.fuelLevel || 0}%`} />
+            <InfoRow icon="speedometer" label="Χιλιόμετρα" value={`${contract.carCondition?.mileage || contract.carInfo?.mileage || 0} km`} />
+            <InfoRow icon="water" label="Καύσιμο" value={`${contract.carCondition?.fuelLevel || 0}/8`} />
           </View>
         </View>
 
@@ -200,7 +200,13 @@ export default function ContractDetailsScreen() {
           <View style={s.card}>
             <InfoRow icon="calendar" label="Παραλαβή" value={contract.rentalPeriod?.pickupDate ? new Date(contract.rentalPeriod.pickupDate).toLocaleDateString('el-GR') : 'N/A'} />
             <InfoRow icon="calendar" label="Επιστροφή" value={contract.rentalPeriod?.dropoffDate ? new Date(contract.rentalPeriod.dropoffDate).toLocaleDateString('el-GR') : 'N/A'} />
-            <InfoRow icon="time" label="Ημέρες" value={(contract.rentalPeriod?.numberOfDays || 0).toString()} />
+            <InfoRow icon="time" label="Ημέρες" value={(() => {
+              if (contract.rentalPeriod?.pickupDate && contract.rentalPeriod?.dropoffDate) {
+                const days = Math.ceil((new Date(contract.rentalPeriod.dropoffDate).getTime() - new Date(contract.rentalPeriod.pickupDate).getTime()) / (1000 * 60 * 60 * 24));
+                return days.toString();
+              }
+              return '0';
+            })()} />
             <InfoRow icon="cash" label="Σύνολο" value={`€${contract.rentalPeriod?.totalCost || 0}`} />
           </View>
         </View>
@@ -209,12 +215,21 @@ export default function ContractDetailsScreen() {
           <View style={s.section}>
             <Text style={s.sectionTitle}>Ζημιές ({contract.damagePoints.length})</Text>
             <View style={s.card}>
-              {contract.damagePoints.map((d, idx) => (
-                <View key={idx} style={s.damageRow}>
-                  <Ionicons name="alert-circle" size={16} color={Colors.error} />
-                  <Text style={s.damageText}>{d.description || 'Ζημιά'} ({d.severity})</Text>
-                </View>
-              ))}
+              {contract.damagePoints.map((d, idx) => {
+                const markerTypeLabels: Record<string, string> = {
+                  'slight-scratch': 'Γρατζουνιά',
+                  'heavy-scratch': 'Βαθιά γρατζουνιά',
+                  'bent': 'Λυγισμένη λαμαρίνα',
+                  'broken': 'Σπασμένο/Λείπει'
+                };
+                const markerLabel = d.markerType ? markerTypeLabels[d.markerType] : 'Ζημιά';
+                return (
+                  <View key={idx} style={s.damageRow}>
+                    <Ionicons name="alert-circle" size={16} color={Colors.error} />
+                    <Text style={s.damageText}>{markerLabel} - {d.description || d.view} ({d.severity})</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}

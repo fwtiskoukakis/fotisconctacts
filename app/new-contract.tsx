@@ -14,18 +14,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Contract, RenterInfo, RentalPeriod, CarInfo, CarCondition, DamagePoint, User } from '../models/contract.interface';
+import { Contract, RenterInfo, RentalPeriod, CarInfo, CarCondition, DamagePoint, DamageMarkerType, User } from '../models/contract.interface';
 import { ContractTemplate } from '../models/contract-template.interface';
 import { SignaturePad } from '../components/signature-pad';
 import { CarDiagram } from '../components/car-diagram';
 import { PhotoCapture } from '../components/photo-capture';
 import { ContractTemplateSelector } from '../components/contract-template-selector';
-import { ContractStorageService } from '../services/contract-storage.service';
-import { UserStorageService } from '../services/user-storage.service';
+import { SupabaseContractService } from '../services/supabase-contract.service';
+import { AuthService } from '../services/auth.service';
 import { ContractTemplateService } from '../services/contract-template.service';
 import { format } from 'date-fns';
 import Svg, { Path } from 'react-native-svg';
-import * as FileSystem from 'expo-file-system/legacy';
 
 type CarView = 'front' | 'rear' | 'left' | 'right';
 
@@ -34,8 +33,6 @@ type CarView = 'front' | 'rear' | 'left' | 'right';
  */
 export default function NewContractScreen() {
   const router = useRouter();
-  const [selectedUserId, setSelectedUserId] = useState<string>('default-user');
-  const [users, setUsers] = useState<User[]>([]);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   
@@ -84,19 +81,6 @@ export default function NewContractScreen() {
   const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
   const [showDropoffDatePicker, setShowDropoffDatePicker] = useState(false);
 
-  async function loadUsers() {
-    try {
-      const loadedUsers = await UserStorageService.getAllUsers();
-      setUsers(loadedUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  }
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
   function handleSelectTemplate(template: ContractTemplate) {
     setSelectedTemplate(template);
     applyTemplateData(template);
@@ -136,34 +120,48 @@ export default function NewContractScreen() {
   function handleSignatureSave(uri: string) {
     setClientSignature(uri);
     
-    // Also read the SVG content to store paths for display
-    FileSystem.readAsStringAsync(uri).then(svgContent => {
-      // Extract paths from SVG content
-      const pathMatches = svgContent.match(/<path[^>]*d="([^"]*)"[^>]*>/g);
-      if (pathMatches) {
-        const paths = pathMatches.map(match => {
-          const dMatch = match.match(/d="([^"]*)"/);
-          return dMatch ? dMatch[1] : '';
-        }).filter(path => path !== '');
-        setClientSignaturePaths(paths);
-        console.log('Extracted signature paths:', paths);
+    try {
+      // Decode base64 data URI to get SVG content
+      // URI format: data:image/svg+xml;base64,XXX
+      if (uri.startsWith('data:image/svg+xml;base64,')) {
+        const base64Data = uri.split(',')[1];
+        const svgContent = decodeURIComponent(escape(atob(base64Data)));
+        
+        // Extract paths from SVG content
+        const pathMatches = svgContent.match(/<path[^>]*d="([^"]*)"[^>]*>/g);
+        if (pathMatches) {
+          const paths = pathMatches.map(match => {
+            const dMatch = match.match(/d="([^"]*)"/);
+            return dMatch ? dMatch[1] : '';
+          }).filter(path => path !== '');
+          setClientSignaturePaths(paths);
+          console.log('Extracted signature paths:', paths);
+        }
       }
-    }).catch(error => {
-      console.error('Error reading signature file:', error);
-    });
+    } catch (error) {
+      console.error('Error parsing signature data:', error);
+    }
   }
 
-  function handleAddDamage(x: number, y: number, view: CarView) {
+  function handleAddDamage(x: number, y: number, view: CarView, markerType: DamageMarkerType) {
+    // Generate a simple unique ID for damage points (not UUID required)
     const newDamage: DamagePoint = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `damage-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       x,
       y,
       view,
       description: '',
       severity: 'minor',
+      markerType,
       timestamp: new Date(),
     };
     setDamagePoints([...damagePoints, newDamage]);
+  }
+
+  function handleRemoveLastDamage() {
+    if (damagePoints.length > 0) {
+      setDamagePoints(damagePoints.slice(0, -1));
+    }
   }
 
   function handlePhotoTaken(uri: string) {
@@ -226,33 +224,72 @@ export default function NewContractScreen() {
 
     setIsSaving(true);
 
-    const finalDropoffLocation = rentalPeriod.isDifferentDropoffLocation
-      ? rentalPeriod.dropoffLocation
-      : rentalPeriod.pickupLocation;
-
-    const contract: Contract = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      renterInfo,
-      rentalPeriod: {
-        ...rentalPeriod,
-        dropoffLocation: finalDropoffLocation,
-      },
-      carInfo,
-      carCondition,
-      damagePoints,
-      photoUris: photos,
-      clientSignature,
-      userId: selectedUserId,
-      createdAt: new Date(),
-    };
-
     try {
-      await ContractStorageService.saveContract(contract);
-      Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς!');
-      router.push('/');
+      // Get the current authenticated user
+      const currentUser = await AuthService.getCurrentUser();
+      if (!currentUser) {
+        Alert.alert('Σφάλμα', 'Δεν είστε συνδεδεμένος. Παρακαλώ συνδεθείτε πρώτα.');
+        setIsSaving(false);
+        return;
+      }
+
+      const finalDropoffLocation = rentalPeriod.isDifferentDropoffLocation
+        ? rentalPeriod.dropoffLocation
+        : rentalPeriod.pickupLocation;
+
+      // Determine contract status based on dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const pickupDate = new Date(rentalPeriod.pickupDate);
+      pickupDate.setHours(0, 0, 0, 0);
+      const dropoffDate = new Date(rentalPeriod.dropoffDate);
+      dropoffDate.setHours(0, 0, 0, 0);
+
+      let status: 'active' | 'completed' | 'upcoming';
+      if (today < pickupDate) {
+        status = 'upcoming';
+      } else if (today > dropoffDate) {
+        status = 'completed';
+      } else {
+        status = 'active';
+      }
+
+      // Generate a proper UUID v4
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
+      const contract: Contract = {
+        id: generateUUID(),
+        renterInfo,
+        rentalPeriod: {
+          ...rentalPeriod,
+          dropoffLocation: finalDropoffLocation,
+        },
+        carInfo,
+        carCondition,
+        damagePoints,
+        photoUris: photos,
+        clientSignature,
+        userId: currentUser.id, // Use authenticated user's ID
+        status,
+        createdAt: new Date(),
+      };
+
+      await SupabaseContractService.saveContract(contract);
+      Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/(tabs)/contracts')
+        }
+      ]);
     } catch (error) {
       console.error('Error saving contract:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία αποθήκευσης συμβολαίου.');
+      Alert.alert('Σφάλμα', `Αποτυχία αποθήκευσης συμβολαίου: ${error}`);
     } finally {
       setIsSaving(false);
     }
@@ -280,14 +317,6 @@ export default function NewContractScreen() {
             <Text style={styles.backButtonText}>← Πίσω</Text>
           </TouchableOpacity>
           <Text style={styles.header}>Νέο Συμβόλαιο Ενοικίασης</Text>
-          <TouchableOpacity 
-            style={styles.userButton}
-            onPress={() => router.push('/user-management')}
-          >
-            <Text style={styles.userButtonText}>
-              👤 {users.find(u => u.id === selectedUserId)?.name || 'Χρήστης'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Template Selection */}
@@ -547,7 +576,11 @@ export default function NewContractScreen() {
 
         {/* 4. Car Diagram - Compact */}
         <View style={styles.section}>
-          <CarDiagram onAddDamage={handleAddDamage} damagePoints={damagePoints} />
+          <CarDiagram 
+            onAddDamage={handleAddDamage} 
+            onRemoveLastDamage={handleRemoveLastDamage}
+            damagePoints={damagePoints} 
+          />
         </View>
 
         {/* 5. Photos - Compact */}

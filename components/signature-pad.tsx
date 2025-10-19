@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import * as FileSystem from 'expo-file-system/legacy';
 
 interface SignaturePadProps {
   onSignatureSave: (uri: string) => void;
@@ -108,19 +107,14 @@ export function SignaturePad({ onSignatureSave, initialSignature, isModal = fals
         </svg>
       `;
 
-      // Save to file
-      const fileName = `signature_${Date.now()}.svg`;
-      const fileUri = `${FileSystem.documentDirectory}signatures/${fileName}`;
+      // Convert to data URI (base64) for direct storage in database
+      const base64Svg = btoa(unescape(encodeURIComponent(svgContent)));
+      const dataUri = `data:image/svg+xml;base64,${base64Svg}`;
       
-      // Ensure directory exists
-      const signaturesDir = FileSystem.documentDirectory + 'signatures/';
-      const dirInfo = await FileSystem.getInfoAsync(signaturesDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(signaturesDir, { intermediates: true });
-      }
-
-      await FileSystem.writeAsStringAsync(fileUri, svgContent);
-      onSignatureSave(fileUri);
+      console.log('Extracted signature paths:', JSON.stringify(allPaths));
+      
+      // Pass the data URI directly (no file system needed)
+      onSignatureSave(dataUri);
       
       // Don't close modal here when isModal is true - let parent handle it
       if (!isModal) {

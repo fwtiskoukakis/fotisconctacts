@@ -52,8 +52,12 @@ export class PDFGenerationService {
     const createdDate = format(new Date(contract.createdAt), 'dd/MM/yyyy HH:mm');
 
     // Get signature SVGs
+    console.log('🔍 Client signature URI:', contract.clientSignature ? 'EXISTS' : 'MISSING');
+    console.log('🔍 User signature URI:', user.signature ? 'EXISTS' : 'MISSING');
     const clientSignatureSVG = contract.clientSignature ? await this.getSignatureSVG(contract.clientSignature) : '';
     const userSignatureSVG = user.signature ? await this.getSignatureSVG(user.signature) : '';
+    console.log('📝 Client signature HTML length:', clientSignatureSVG.length);
+    console.log('📝 User signature HTML length:', userSignatureSVG.length);
 
     return `
       <!DOCTYPE html>
@@ -62,50 +66,56 @@ export class PDFGenerationService {
         <meta charset="utf-8">
         <title>Συμβόλαιο Ενοικίασης</title>
         <style>
+          @page {
+            margin: 15mm;
+          }
           body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            line-height: 1.3;
             color: #333;
+            font-size: 11px;
           }
           .header {
             text-align: center;
             border-bottom: 2px solid #007AFF;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
           }
           .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #007AFF;
-            margin-bottom: 10px;
-          }
-          .subtitle {
-            font-size: 16px;
-            color: #666;
-          }
-          .section {
-            margin-bottom: 25px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-          }
-          .section-title {
             font-size: 18px;
             font-weight: bold;
             color: #007AFF;
-            margin-bottom: 15px;
+            margin-bottom: 4px;
+          }
+          .subtitle {
+            font-size: 13px;
+            color: #666;
+          }
+          .section {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+          }
+          .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #007AFF;
+            margin-bottom: 6px;
             border-bottom: 1px solid #007AFF;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
           }
           .info-row {
             display: flex;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
           }
           .info-label {
             font-weight: bold;
-            width: 200px;
+            width: 150px;
             color: #555;
           }
           .info-value {
@@ -114,8 +124,8 @@ export class PDFGenerationService {
           .signatures {
             display: flex;
             justify-content: space-between;
-            margin-top: 40px;
-            padding-top: 20px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 2px solid #007AFF;
           }
           .signature-box {
@@ -123,44 +133,64 @@ export class PDFGenerationService {
             text-align: center;
           }
           .signature-line {
-            border-bottom: 1px solid #333;
+            border-bottom: 2px solid #333;
             height: 40px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
           }
           .signature-image {
-            height: 80px;
-            margin-bottom: 10px;
+            height: 60px;
+            margin-bottom: 6px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
           }
-          .signature-image svg {
-            width: 100%;
-            height: 100%;
+          .signature-image img {
+            max-width: 100%;
+            max-height: 100%;
+          }
+          .signature-label {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 2px;
+          }
+          .signature-name {
+            font-size: 10px;
+            color: #666;
+          }
+          .page-break {
+            page-break-after: always;
+            margin-bottom: 0;
           }
           .terms {
-            margin-top: 30px;
-            padding: 20px;
+            margin-top: 12px;
+            padding: 10px;
             background-color: #f0f0f0;
-            border-radius: 8px;
+            border-radius: 4px;
           }
           .terms-title {
-            font-size: 16px;
+            font-size: 13px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             color: #333;
           }
           .terms-content {
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.3;
+          }
+          .terms-content p {
+            margin: 4px 0;
           }
           .footer {
-            margin-top: 30px;
+            margin-top: 12px;
             text-align: center;
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
             border-top: 1px solid #ddd;
-            padding-top: 15px;
+            padding-top: 8px;
           }
         </style>
       </head>
@@ -257,41 +287,25 @@ export class PDFGenerationService {
         ${contract.damagePoints.length > 0 ? `
         <div class="section">
           <div class="section-title">Καταγεγραμμένες Ζημιές</div>
-          ${contract.damagePoints.map((damage, index) => `
+          ${contract.damagePoints.map((damage, index) => {
+            const markerTypeLabels: Record<string, string> = {
+              'slight-scratch': 'Γρατζουνιά',
+              'heavy-scratch': 'Βαθιά γρατζουνιά',
+              'bent': 'Λυγισμένη λαμαρίνα',
+              'broken': 'Σπασμένο/Λείπει'
+            };
+            const markerLabel = damage.markerType ? markerTypeLabels[damage.markerType] || damage.markerType : 'Ζημιά';
+            return `
             <div class="info-row">
               <div class="info-label">Ζημιά ${index + 1}:</div>
-              <div class="info-value">${damage.view} - Θέση: (${damage.x.toFixed(1)}%, ${damage.y.toFixed(1)}%) - Σοβαρότητα: ${damage.severity}</div>
+              <div class="info-value">${markerLabel} - ${damage.view} - Θέση: (${damage.x.toFixed(1)}%, ${damage.y.toFixed(1)}%)</div>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
         ` : ''}
 
-        <div class="signatures">
-          <div class="signature-box">
-            ${contract.clientSignature ? `
-              <div class="signature-image">
-                ${clientSignatureSVG}
-              </div>
-            ` : `
-              <div class="signature-line"></div>
-            `}
-            <div><strong>Υπογραφή Ενοικιαστή</strong></div>
-            <div>${contract.renterInfo.fullName}</div>
-          </div>
-          <div class="signature-box">
-            ${user.signature ? `
-              <div class="signature-image">
-                ${userSignatureSVG}
-              </div>
-            ` : `
-              <div class="signature-line"></div>
-            `}
-            <div><strong>Υπογραφή Διαχειριστή</strong></div>
-            <div>${user.name}</div>
-          </div>
-        </div>
-
-        <div class="terms">
+        <!-- Terms and Conditions -->
+        <div class="terms page-break">
           <div class="terms-title">Όροι και Προϋποθέσεις</div>
           <div class="terms-content">
             <p><strong>1. Ευθύνη Ενοικιαστή:</strong> Ο ενοικιαστής είναι υπεύθυνος για την ασφαλή χρήση του οχήματος και την τήρηση όλων των κανόνων κυκλοφορίας.</p>
@@ -300,6 +314,28 @@ export class PDFGenerationService {
             <p><strong>4. Επιστροφή:</strong> Το όχημα πρέπει να επιστραφεί στην καθορισμένη ημερομηνία και ώρα.</p>
             <p><strong>5. Καύσιμα:</strong> Το όχημα παραδίδεται με ${contract.carCondition?.fuelLevel || 8}/8 καύσιμα και πρέπει να επιστραφεί με την ίδια ποσότητα.</p>
             <p><strong>6. Παράβαση:</strong> Η παραβίαση των όρων του συμβολαίου μπορεί να οδηγήσει σε πρόσθετες χρεώσεις.</p>
+          </div>
+        </div>
+
+        <!-- Final signatures at the end -->
+        <div class="signatures">
+          <div class="signature-box">
+            ${contract.clientSignature ? `
+              ${clientSignatureSVG}
+            ` : `
+              <div class="signature-line"></div>
+            `}
+            <div class="signature-label">Υπογραφή Ενοικιαστή</div>
+            <div class="signature-name">${contract.renterInfo.fullName}</div>
+          </div>
+          <div class="signature-box">
+            ${user.signature ? `
+              ${userSignatureSVG}
+            ` : `
+              <div class="signature-line"></div>
+            `}
+            <div class="signature-label">Υπογραφή Διαχειριστή</div>
+            <div class="signature-name">${user.name}</div>
           </div>
         </div>
 
@@ -317,10 +353,19 @@ export class PDFGenerationService {
    */
   private static async getSignatureSVG(signatureUri: string): Promise<string> {
     try {
+      // If it's already a data URI, return it as a styled div with img
+      if (signatureUri.startsWith('data:image/svg+xml;base64,')) {
+        return `<div class="signature-image"><img src="${signatureUri}" style="width: 100%; height: 100%; object-fit: contain;" /></div>`;
+      }
+      
+      // Fallback to file system for legacy signatures
       const svgContent = await FileSystem.readAsStringAsync(signatureUri);
-      return svgContent;
+      // Convert to base64 data URI
+      const base64 = btoa(unescape(encodeURIComponent(svgContent)));
+      const dataUri = `data:image/svg+xml;base64,${base64}`;
+      return `<div class="signature-image"><img src="${dataUri}" style="width: 100%; height: 100%; object-fit: contain;" /></div>`;
     } catch (error) {
-      console.error('Error reading signature file:', error);
+      console.error('Error reading signature:', error);
       return '';
     }
   }
