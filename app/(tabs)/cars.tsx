@@ -9,15 +9,12 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { SimpleGlassCard } from '../components/glass-card';
-import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
-import { supabase } from '../utils/supabase';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
+import { supabase } from '../../utils/supabase';
 
 interface Car {
   id: string;
@@ -95,9 +92,7 @@ export default function CarsScreen() {
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <AppHeader title="Αυτοκίνητα" showBack={true} showActions={true} />
-
+    <View style={s.container}>
       <View style={s.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
           <Ionicons name="home" size={14} color={Colors.primary} />
@@ -150,9 +145,7 @@ export default function CarsScreen() {
           </View>
         )}
       </ScrollView>
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 

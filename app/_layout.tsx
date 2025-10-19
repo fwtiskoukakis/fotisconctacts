@@ -83,7 +83,7 @@ export default function RootLayout() {
       router.replace('/auth/sign-in');
     } else if (isAuthenticated && inAuthGroup && !isResetPassword) {
       // Redirect to main app if authenticated and in auth screens (except reset-password)
-      router.replace('/');
+      router.replace('/(tabs)/');
     }
   }, [isAuthenticated, segments, isAuthInitialized]);
 
@@ -98,17 +98,14 @@ export default function RootLayout() {
           <Stack.Screen name="auth/sign-in" />
           <Stack.Screen name="auth/sign-up" />
           <Stack.Screen name="auth/reset-password" />
-          <Stack.Screen name="index" />
-          <Stack.Screen name="contracts" />
-          <Stack.Screen name="cars" />
-          <Stack.Screen name="analytics" />
-          <Stack.Screen name="profile" />
-          <Stack.Screen name="damage-report" />
-          <Stack.Screen name="settings" />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="new-contract" />
           <Stack.Screen name="contract-details" />
           <Stack.Screen name="edit-contract" />
+          <Stack.Screen name="car-details" />
           <Stack.Screen name="user-management" />
+          <Stack.Screen name="aade-settings" />
+          <Stack.Screen name="notifications" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

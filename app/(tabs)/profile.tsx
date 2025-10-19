@@ -11,16 +11,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { SimpleGlassCard } from '../components/glass-card';
-import { AuthService } from '../services/auth.service';
-import { supabase } from '../utils/supabase';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { AuthService } from '../../services/auth.service';
+import { supabase } from '../../utils/supabase';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
 
 interface UserProfile {
   id: string;
@@ -266,21 +263,18 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppHeader title="Προφίλ" showActions={true} />
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Φόρτωση προφίλ...</Text>
         </View>
-        <BottomTabBar />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppHeader title="Προφίλ" showActions={true} />
+      <View style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={Colors.error} />
           <Text style={styles.errorText}>Αποτυχία φόρτωσης προφίλ</Text>
@@ -288,15 +282,12 @@ export default function ProfileScreen() {
             <Text style={styles.retryText}>Δοκιμάστε ξανά</Text>
           </TouchableOpacity>
         </View>
-        <BottomTabBar />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Προφίλ" showActions={true} />
-      
+    <View style={styles.container}>
       {/* Breadcrumb */}
       <View style={styles.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
@@ -468,8 +459,6 @@ export default function ProfileScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <BottomTabBar />
-
       {/* Edit Field Modal */}
       {editingField && (
         <View style={styles.editOverlay}>
@@ -523,7 +512,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

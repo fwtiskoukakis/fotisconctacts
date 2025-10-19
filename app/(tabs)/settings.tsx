@@ -1,14 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { SimpleGlassCard } from '../components/glass-card';
-import { Colors, Typography, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
-import { AuthService } from '../services/auth.service';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { Colors, Typography, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
+import { AuthService } from '../../services/auth.service';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -44,8 +41,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <AppHeader title="Ρυθμίσεις" showBack={true} showActions={true} />
+    <View style={s.container}>
 
       <View style={s.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
@@ -96,9 +92,7 @@ export default function SettingsScreen() {
           <Text style={s.signOutText}>Αποσύνδεση</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 

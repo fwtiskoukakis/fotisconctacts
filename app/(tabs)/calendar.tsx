@@ -8,17 +8,14 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { ContextAwareFab } from '../components/context-aware-fab';
-import { SimpleGlassCard } from '../components/glass-card';
-import { SupabaseContractService } from '../services/supabase-contract.service';
-import { Contract } from '../models/contract.interface';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
+import { ContextAwareFab } from '../../components/context-aware-fab';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { SupabaseContractService } from '../../services/supabase-contract.service';
+import { Contract } from '../../models/contract.interface';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
 
 interface CalendarEvent {
   id: string;
@@ -189,9 +186,7 @@ export default function CalendarScreen() {
   const upcomingEvents = getUpcomingEvents();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Ημερολόγιο" showActions={true} />
-      
+    <View style={styles.container}>
       {/* Breadcrumb */}
       <View style={styles.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
@@ -252,9 +247,7 @@ export default function CalendarScreen() {
           Alert.alert('Συνέχεια', 'Η λειτουργία προγραμματισμού αναφορών θα προστεθεί σύντομα');
         }}
       />
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 

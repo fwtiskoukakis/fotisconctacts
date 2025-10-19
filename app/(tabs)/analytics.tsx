@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { SimpleGlassCard } from '../components/glass-card';
-import { SupabaseContractService } from '../services/supabase-contract.service';
-import { Colors, Typography, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { SupabaseContractService } from '../../services/supabase-contract.service';
+import { Colors, Typography, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
 
 export default function AnalyticsScreen() {
   const router = useRouter();
@@ -70,8 +67,7 @@ export default function AnalyticsScreen() {
   );
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <AppHeader title="Αναλυτικά" showBack={true} showActions={true} />
+    <View style={s.container}>
 
       <View style={s.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
@@ -122,9 +118,7 @@ export default function AnalyticsScreen() {
           </View>
         </View>
       </ScrollView>
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -9,17 +9,14 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { SimpleGlassCard } from '../components/glass-card';
-import { SupabaseContractService } from '../services/supabase-contract.service';
-import { Contract } from '../models/contract.interface';
-import { Colors, Typography, Spacing, Shadows, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
-import { getAADEStatusMessage } from '../utils/aade-contract-helper';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { SupabaseContractService } from '../../services/supabase-contract.service';
+import { Contract } from '../../models/contract.interface';
+import { Colors, Typography, Spacing, Shadows, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
+import { getAADEStatusMessage } from '../../utils/aade-contract-helper';
 
 export default function ContractsScreen() {
   const router = useRouter();
@@ -94,9 +91,7 @@ export default function ContractsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Συμβόλαια" showBack={true} showActions={true} />
-
+    <View style={styles.container}>
       {/* Breadcrumb */}
       <View style={styles.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
@@ -181,9 +176,7 @@ export default function ContractsScreen() {
           </View>
         )}
       </ScrollView>
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 

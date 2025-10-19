@@ -10,19 +10,16 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Contract } from '../models/contract.interface';
-import { SupabaseContractService } from '../services/supabase-contract.service';
-import { supabase } from '../utils/supabase';
-import { AppHeader } from '../components/app-header';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { ContextAwareFab } from '../components/context-aware-fab';
-import { SimpleGlassCard } from '../components/glass-card';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
-import { smoothScrollConfig } from '../utils/animations';
-import { getAADEStatusMessage } from '../utils/aade-contract-helper';
+import { Contract } from '../../models/contract.interface';
+import { SupabaseContractService } from '../../services/supabase-contract.service';
+import { supabase } from '../../utils/supabase';
+import { ContextAwareFab } from '../../components/context-aware-fab';
+import { SimpleGlassCard } from '../../components/glass-card';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../../utils/design-system';
+import { smoothScrollConfig } from '../../utils/animations';
+import { getAADEStatusMessage } from '../../utils/aade-contract-helper';
 
 const { width } = Dimensions.get('window');
 
@@ -321,9 +318,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader showActions={true} />
-
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -422,9 +417,7 @@ export default function HomeScreen() {
         onNewDamage={() => router.push('/damage-report')}
         onNewUser={() => router.push('/user-management')}
       />
-
-      <BottomTabBar />
-    </SafeAreaView>
+    </View>
   );
 }
 
