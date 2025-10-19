@@ -15,36 +15,45 @@ import {
   Animated,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthService } from '../../services/auth.service';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../../utils/design-system';
+import { Colors, Spacing, Shadows, BorderRadius } from '../../utils/design-system';
 
 const { width, height } = Dimensions.get('window');
 
 /**
- * Professional Business Sign In Screen
+ * Modern & Beautiful Sign In Screen
  */
 export default function SignInScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [slideAnim] = useState(new Animated.Value(50));
+  const [slideAnim] = useState(new Animated.Value(30));
+  const [logoScale] = useState(new Animated.Value(0.3));
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 800,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
+      Animated.spring(slideAnim, {
         toValue: 0,
-        duration: 800,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 15,
+        friction: 5,
         useNativeDriver: true,
       }),
     ]).start();
@@ -116,7 +125,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -126,59 +135,55 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Background Decorative Elements */}
-          <View style={styles.backgroundPattern}>
-            <View style={styles.circle1} />
-            <View style={styles.circle2} />
-            <View style={styles.circle3} />
+          {/* Modern Gradient Background */}
+          <View style={styles.gradientBackground}>
+            <View style={[styles.gradientCircle, styles.circle1]} />
+            <View style={[styles.gradientCircle, styles.circle2]} />
+            <View style={[styles.gradientCircle, styles.circle3]} />
           </View>
 
-          {/* Header Section */}
+          {/* Logo and Header */}
           <Animated.View 
             style={[
               styles.header,
               {
                 opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: logoScale }
+                ],
               },
             ]}
           >
-            <View style={styles.logoContainer}>
+            <View style={styles.logoWrapper}>
               <Image 
                 source={require('../../assets/logo.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.appTitle}>AGGELOS Rentals</Text>
-            <Text style={styles.appSubtitle}>Σύστημα Διαχείρισης Ενοικιάσεων Αυτοκινήτων</Text>
-            <Text style={styles.welcomeText}>Καλώς ήρθατε! Συνδεθείτε για να συνεχίσετε</Text>
+            <Text style={styles.brandSubtitle}>Καλώς ήρθατε πίσω</Text>
           </Animated.View>
 
-          {/* Login Form */}
+          {/* Main Form Card */}
           <Animated.View 
             style={[
-              styles.formContainer,
-              Glassmorphism.medium,
+              styles.formCard,
               {
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
               },
             ]}
           >
-            <Text style={styles.formTitle}>Σύνδεση Χρήστη</Text>
-            <Text style={styles.formSubtitle}>Εισάγετε τα στοιχεία σας</Text>
-
             {/* Email Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <View style={[styles.inputContainer, Glassmorphism.light]}>
-                <Text style={styles.inputIcon}>📧</Text>
+            <View style={styles.inputWrapper}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="example@email.com"
+                  placeholder="Email"
                   placeholderTextColor={Colors.textSecondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -189,21 +194,31 @@ export default function SignInScreen() {
             </View>
 
             {/* Password Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Κωδικός Πρόσβασης</Text>
-              <View style={[styles.inputContainer, Glassmorphism.light]}>
-                <Text style={styles.inputIcon}>🔒</Text>
+            <View style={styles.inputWrapper}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Εισάγετε τον κωδικό σας"
+                  placeholder="Κωδικός Πρόσβασης"
                   placeholderTextColor={Colors.textSecondary}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password"
                   editable={!isLoading}
                 />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                    size={20} 
+                    color={Colors.textSecondary} 
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -211,9 +226,9 @@ export default function SignInScreen() {
             <TouchableOpacity
               onPress={handleForgotPassword}
               disabled={isLoading}
-              style={styles.forgotPasswordContainer}
+              style={styles.forgotPasswordButton}
             >
-              <Text style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>
                 Ξεχάσατε τον κωδικό σας;
               </Text>
             </TouchableOpacity>
@@ -223,32 +238,35 @@ export default function SignInScreen() {
               style={[styles.signInButton, isLoading && styles.buttonDisabled]}
               onPress={handleSignIn}
               disabled={isLoading}
+              activeOpacity={0.8}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <View style={styles.buttonContent}>
                   <Text style={styles.signInButtonText}>Σύνδεση</Text>
-                  <Text style={styles.signInButtonIcon}>→</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                 </View>
               )}
             </TouchableOpacity>
 
             {/* Divider */}
-            <View style={styles.divider}>
+            <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ή</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Sign Up Link */}
+            {/* Sign Up Button */}
             <TouchableOpacity
-              style={[styles.signUpButton, Glassmorphism.light]}
+              style={styles.signUpButton}
               onPress={() => router.push('/auth/sign-up')}
               disabled={isLoading}
+              activeOpacity={0.7}
             >
+              <Ionicons name="person-add-outline" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.signUpButtonText}>
-                Δεν έχετε λογαριασμό; <Text style={styles.signUpButtonTextBold}>Εγγραφείτε</Text>
+                Δημιουργία Λογαριασμού
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -257,15 +275,16 @@ export default function SignInScreen() {
           <Animated.View 
             style={[
               styles.footer,
-              {
-                opacity: fadeAnim,
-              },
+              { opacity: fadeAnim },
             ]}
           >
-            <Text style={styles.footerText}>
-              © 2024 AGGELOS Rentals. Όλα τα δικαιώματα διατηρούνται.
+            <View style={styles.footerRow}>
+              <Ionicons name="shield-checkmark" size={14} color={Colors.textSecondary} />
+              <Text style={styles.footerText}>Ασφαλής Σύνδεση</Text>
+            </View>
+            <Text style={styles.copyrightText}>
+              © 2024 AGGELOS Rentals
             </Text>
-            <Text style={styles.versionText}>Έκδοση 1.0.0</Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -274,65 +293,76 @@ export default function SignInScreen() {
       <Modal
         visible={showForgotPassword}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowForgotPassword(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, Glassmorphism.medium]}>
-            <Text style={styles.modalTitle}>Επαναφορά Κωδικού</Text>
-            <Text style={styles.modalDescription}>
-              Εισάγετε το email σας και θα σας στείλουμε οδηγίες για την επαναφορά του κωδικού σας.
-            </Text>
+          <Animated.View style={[styles.modalContent]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="key" size={32} color={Colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Επαναφορά Κωδικού</Text>
+              <Text style={styles.modalDescription}>
+                Εισάγετε το email σας για να λάβετε οδηγίες επαναφοράς
+              </Text>
+            </View>
             
-            <View style={[styles.modalInputContainer, Glassmorphism.light]}>
-              <Text style={styles.modalInputIcon}>📧</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={resetEmail}
-                onChangeText={setResetEmail}
-                placeholder="Email"
-                placeholderTextColor={Colors.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+            <View style={styles.modalInputWrapper}>
+              <View style={styles.modalInputContainer}>
+                <Ionicons name="mail" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.modalInput}
+                  value={resetEmail}
+                  onChangeText={setResetEmail}
+                  placeholder="example@email.com"
+                  placeholderTextColor={Colors.textSecondary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
             </View>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalCancelButton, Glassmorphism.light]}
+                style={styles.modalCancelButton}
                 onPress={() => setShowForgotPassword(false)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Ακύρωση</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalSendButton}
                 onPress={handleSendResetEmail}
+                activeOpacity={0.8}
               >
+                <Ionicons name="send" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.modalSendText}>Αποστολή</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xl,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xxl,
   },
-  backgroundPattern: {
+  // Gradient Background
+  gradientBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -340,136 +370,104 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
   },
-  circle1: {
+  gradientCircle: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    borderRadius: 9999,
+    opacity: 0.08,
+  },
+  circle1: {
+    width: 400,
+    height: 400,
     backgroundColor: Colors.primary,
-    opacity: 0.05,
-    top: -100,
+    top: -150,
     right: -100,
   },
   circle2: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 300,
+    height: 300,
     backgroundColor: Colors.secondary,
-    opacity: 0.05,
-    bottom: -50,
-    left: -50,
+    bottom: -100,
+    left: -80,
   },
   circle3: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 200,
+    height: 200,
     backgroundColor: Colors.info,
-    opacity: 0.05,
-    top: height * 0.4,
-    right: -30,
+    top: height * 0.5,
+    right: -50,
   },
+  // Header
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xl,
-    marginTop: Spacing.xxl,
+    marginBottom: Spacing.xxl,
+    paddingTop: Spacing.xl,
   },
-  logoContainer: {
-    width: 200,
-    height: 120,
-    justifyContent: 'center',
+  logoWrapper: {
+    marginBottom: Spacing.md,
     alignItems: 'center',
-    marginBottom: Spacing.lg,
   },
   logo: {
-    width: '100%',
-    height: '100%',
+    width: 280,
+    height: 120,
   },
-  appTitle: {
-    ...Typography.h1,
-    color: Colors.text,
-    fontWeight: 'bold',
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
-  },
-  appSubtitle: {
-    ...Typography.bodyMedium,
+  brandSubtitle: {
+    fontSize: 17,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
+    fontWeight: '500',
+    marginTop: Spacing.sm,
   },
-  welcomeText: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  formContainer: {
-    borderRadius: BorderRadius.xl,
+  // Form Card
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: Spacing.xl,
-    marginBottom: Spacing.xl,
     ...Shadows.lg,
-  },
-  formTitle: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontWeight: 'bold',
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
-  },
-  formSubtitle: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  inputGroup: {
     marginBottom: Spacing.lg,
   },
-  label: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
+  inputWrapper: {
+    marginBottom: Spacing.md,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
     paddingHorizontal: Spacing.md,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.borderLight,
-    ...Shadows.sm,
+    height: 54,
   },
   inputIcon: {
-    fontSize: 20,
     marginRight: Spacing.sm,
   },
   input: {
     flex: 1,
-    ...Typography.bodyMedium,
+    fontSize: 15,
     color: Colors.text,
-    paddingVertical: Spacing.md,
+    fontWeight: '500',
   },
-  forgotPasswordContainer: {
+  eyeIcon: {
+    padding: Spacing.xs,
+  },
+  forgotPasswordButton: {
     alignSelf: 'flex-end',
     marginBottom: Spacing.lg,
+    paddingVertical: Spacing.xs,
   },
-  forgotPassword: {
-    ...Typography.bodySmall,
+  forgotPasswordText: {
+    fontSize: 14,
     color: Colors.primary,
     fontWeight: '600',
   },
+  // Buttons
   signInButton: {
     backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    borderRadius: 12,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.lg,
     ...Shadows.md,
+    marginBottom: Spacing.md,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -477,20 +475,14 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   signInButtonText: {
-    ...Typography.bodyLarge,
+    fontSize: 17,
     color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginRight: Spacing.sm,
+    fontWeight: '700',
   },
-  signInButtonIcon: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  divider: {
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: Spacing.lg,
@@ -501,45 +493,51 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
   dividerText: {
-    ...Typography.bodySmall,
+    fontSize: 13,
     color: Colors.textSecondary,
     marginHorizontal: Spacing.md,
+    fontWeight: '500',
   },
   signUpButton: {
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    flexDirection: 'row',
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    height: 54,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.primary + '30',
   },
   signUpButtonText: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
-  },
-  signUpButtonTextBold: {
+    fontSize: 16,
     color: Colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
+  // Footer
   footer: {
     alignItems: 'center',
     marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
+    paddingBottom: Spacing.lg,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Spacing.sm,
   },
   footerText: {
-    ...Typography.caption,
+    fontSize: 12,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xs,
+    fontWeight: '500',
   },
-  versionText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    opacity: 0.6,
+  copyrightText: {
+    fontSize: 11,
+    color: Colors.textTertiary,
   },
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.lg,
@@ -547,41 +545,55 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 400,
-    borderRadius: BorderRadius.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: Spacing.xl,
-    ...Shadows.lg,
+    ...Shadows.xl,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  modalIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
   },
   modalTitle: {
-    ...Typography.h3,
+    fontSize: 22,
+    fontWeight: '700',
     color: Colors.text,
-    fontWeight: 'bold',
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   modalDescription: {
-    ...Typography.bodyMedium,
+    fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalInputWrapper: {
     marginBottom: Spacing.xl,
   },
   modalInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
     paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.xl,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.borderLight,
-  },
-  modalInputIcon: {
-    fontSize: 20,
-    marginRight: Spacing.sm,
+    height: 54,
   },
   modalInput: {
     flex: 1,
-    ...Typography.bodyMedium,
+    fontSize: 15,
     color: Colors.text,
-    paddingVertical: Spacing.md,
+    fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row',
@@ -589,28 +601,33 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    height: 50,
+    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
   modalCancelText: {
-    ...Typography.bodyMedium,
+    fontSize: 16,
     color: Colors.text,
     fontWeight: '600',
   },
   modalSendButton: {
     flex: 1,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    height: 50,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    gap: 6,
     ...Shadows.sm,
   },
   modalSendText: {
-    ...Typography.bodyMedium,
+    fontSize: 16,
     color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

@@ -1,87 +1,62 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Contract, DamagePoint, User } from '../models/contract.interface';
+import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../components/app-header';
+import { BottomTabBar } from '../components/bottom-tab-bar';
+import { SimpleGlassCard } from '../components/glass-card';
+import { Contract, User } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { supabase } from '../utils/supabase';
 import { PDFGenerationService } from '../services/pdf-generation.service';
-import { ImageModal } from '../components/image-modal';
-import { BottomTabBar } from '../components/bottom-tab-bar';
-import { Breadcrumb } from '../components/breadcrumb';
-import { format } from 'date-fns';
+import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
+import { createContractWithAADE, canSubmitToAADE, getAADEStatusMessage } from '../utils/aade-contract-helper';
 
-/**
- * Screen for viewing contract details with photos
- */
 export default function ContractDetailsScreen() {
   const router = useRouter();
   const { contractId } = useLocalSearchParams();
   const [contract, setContract] = React.useState<Contract | null>(null);
-  const [selectedImageUri, setSelectedImageUri] = React.useState<string | null>(null);
-  const [isImageModalVisible, setIsImageModalVisible] = React.useState(false);
   const [user, setUser] = React.useState<User | null>(null);
-  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+  const [generating, setGenerating] = React.useState(false);
+  const [submittingAADE, setSubmittingAADE] = React.useState(false);
 
   React.useEffect(() => {
-    async function loadContract() {
-      if (typeof contractId === 'string') {
-        try {
-          const loadedContract = await SupabaseContractService.getContractById(contractId);
-          if (loadedContract) {
-            setContract(loadedContract);
-            // Load user who created the contract from Supabase
-            if (loadedContract.userId) {
-              const { data: userData, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', loadedContract.userId)
-                .single();
-              
-              if (userData && !error) {
-                setUser({
-                  id: userData.id,
-                  name: userData.name,
-                  email: userData.email,
-                  phone: userData.phone,
-                  address: userData.address,
-                  signature: userData.signature_url || '',
-                  signatureUrl: userData.signature_url,
-                  createdAt: new Date(userData.created_at),
-                  updatedAt: userData.updated_at ? new Date(userData.updated_at) : undefined,
-                });
-              }
-            }
-          } else {
-            Alert.alert('Σφάλμα', 'Το συμβόλαιο δεν βρέθηκε.');
-            router.back();
-          }
-        } catch (error) {
-          console.error('Error loading contract:', error);
-          Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης συμβολαίου.');
-          router.back();
-        }
-      }
-    }
     loadContract();
   }, [contractId]);
 
-  function handleImagePress(imageUri: string) {
-    setSelectedImageUri(imageUri);
-    setIsImageModalVisible(true);
-  }
-
-  function handleCloseImageModal() {
-    setIsImageModalVisible(false);
-    setSelectedImageUri(null);
+  async function loadContract() {
+    if (typeof contractId === 'string') {
+      try {
+        const c = await SupabaseContractService.getContractById(contractId);
+        if (c) {
+          setContract(c);
+          if (c.userId) {
+            const { data: userData } = await supabase.from('users').select('id,name,email,phone,address,signature_url,created_at,updated_at').eq('id', c.userId).single();
+            if (userData) {
+              setUser({
+                id: userData.id,
+                name: userData.name,
+                email: userData.email || '',
+                phone: userData.phone || '',
+                address: userData.address || '',
+                signature: userData.signature_url || '',
+                signatureUrl: userData.signature_url,
+                createdAt: new Date(userData.created_at),
+                updatedAt: userData.updated_at ? new Date(userData.updated_at) : undefined,
+              });
+            }
+          }
+        } else {
+          Alert.alert('Σφάλμα', 'Το συμβόλαιο δεν βρέθηκε.');
+          router.back();
+        }
+      } catch (error) {
+        Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης');
+        router.back();
+      }
+    }
   }
 
   async function handleGeneratePDF() {
@@ -89,38 +64,69 @@ export default function ContractDetailsScreen() {
       Alert.alert('Σφάλμα', 'Δεν είναι δυνατή η δημιουργία PDF');
       return;
     }
-
-    setIsGeneratingPDF(true);
+    setGenerating(true);
     try {
       const pdfUri = await PDFGenerationService.generateContractPDF(contract, user);
       await PDFGenerationService.sharePDF(pdfUri);
-      Alert.alert('Επιτυχία', 'Το PDF δημιουργήθηκε και μοιράστηκε επιτυχώς!');
+      Alert.alert('Επιτυχία', 'Το PDF δημιουργήθηκε επιτυχώς!');
     } catch (error) {
-      console.error('Error generating PDF:', error);
       Alert.alert('Σφάλμα', 'Αποτυχία δημιουργίας PDF');
     } finally {
-      setIsGeneratingPDF(false);
+      setGenerating(false);
     }
   }
 
-  async function handleDeleteContract() {
+  function handleEdit() {
+    if (contract) router.push(`/edit-contract?contractId=${contract.id}`);
+  }
+
+  async function handlePushToAADE() {
+    if (!contract) return;
+
+    // Check if can submit
+    const validation = canSubmitToAADE(contract);
+    if (!validation.canSubmit) {
+      Alert.alert('Σφάλμα', validation.reason || 'Δεν είναι δυνατή η υποβολή στο AADE');
+      return;
+    }
+
+    // Check if already submitted
+    if (contract.aadeStatus === 'submitted' || contract.aadeStatus === 'completed') {
+      Alert.alert(
+        'Ειδοποίηση',
+        'Αυτό το συμβόλαιο έχει ήδη υποβληθεί στο AADE.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     Alert.alert(
-      'Διαγραφή Συμβολαίου',
-      'Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το συμβόλαιο;',
+      'Υποβολή στο AADE',
+      'Θέλετε να υποβάλετε αυτό το συμβόλαιο στο AADE;',
       [
         { text: 'Ακύρωση', style: 'cancel' },
         {
-          text: 'Διαγραφή',
-          style: 'destructive',
+          text: 'Υποβολή',
           onPress: async () => {
+            setSubmittingAADE(true);
             try {
-              await SupabaseContractService.deleteContract(contract.id);
-              Alert.alert('Επιτυχία', 'Το συμβόλαιο διαγράφηκε επιτυχώς.');
-              router.back();
+              const result = await createContractWithAADE(contract, contract.id);
+              
+              if (result.success) {
+                Alert.alert(
+                  'Επιτυχία',
+                  `Το συμβόλαιο υποβλήθηκε επιτυχώς στο AADE${result.aadeDclId ? ` με DCL ID: ${result.aadeDclId}` : ''}`
+                );
+                // Reload contract to get updated AADE status
+                await loadContract();
+              } else {
+                Alert.alert('Σφάλμα', result.error || 'Αποτυχία υποβολής στο AADE');
+              }
             } catch (error) {
-              console.error('Error deleting contract:', error);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής συμβολαίου.');
+              Alert.alert('Σφάλμα', 'Αποτυχία υποβολής στο AADE');
+              console.error('AADE submission error:', error);
+            } finally {
+              setSubmittingAADE(false);
             }
           },
         },
@@ -130,303 +136,188 @@ export default function ContractDetailsScreen() {
 
   if (!contract) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <Text>Φόρτωση συμβολαίου...</Text>
+      <SafeAreaView style={s.container} edges={['top']}>
+        <AppHeader title="Λεπτομέρειες" showBack={true} showActions={true} />
+        <View style={s.loading}>
+          <Text style={s.loadingText}>Φόρτωση...</Text>
+        </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
 
-  const damagePointsByView = contract.damagePoints.reduce((acc, damage) => {
-    (acc[damage.view] = acc[damage.view] || []).push(damage);
-    return acc;
-  }, {} as Record<DamagePoint['view'], DamagePoint[]>);
+  const InfoRow = ({ icon, label, value }: any) => (
+    <View style={s.infoRow}>
+      <Ionicons name={icon} size={16} color={Colors.primary} />
+      <Text style={s.infoLabel}>{label}:</Text>
+      <Text style={s.infoValue}>{value}</Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: 'Αρχική', path: '/' },
-          { label: 'Συμβόλαια', path: '/contracts' },
-          { label: contract.renterInfo.fullName },
-        ]}
-      />
-      
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Πίσω</Text>
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Λεπτομέρειες Συμβολαίου</Text>
+    <SafeAreaView style={s.container} edges={['top']}>
+      <AppHeader title="Λεπτομέρειες Συμβολαίου" showBack={true} showActions={true} />
+
+      <View style={s.breadcrumb}>
+        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
+          <Ionicons name="home" size={14} color={Colors.primary} />
+          <Text style={s.breadcrumbText}>Αρχική</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <TouchableOpacity onPress={() => router.push('/contracts')} style={s.breadcrumbItem}>
+          <Text style={s.breadcrumbText}>Συμβόλαια</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <Text style={s.breadcrumbCurrent}>#{contract.id.slice(0, 8)}</Text>
+      </View>
+
+      <ScrollView style={s.content} contentContainerStyle={s.scrollContent} {...smoothScrollConfig}>
+        {/* AADE Status Badge */}
+        {contract.aadeStatus && (
+          <View style={s.aadeStatusContainer}>
+            <View style={[s.aadeBadge, { backgroundColor: getAADEStatusMessage(contract.aadeStatus).color + '15' }]}>
+              <Ionicons 
+                name={contract.aadeStatus === 'submitted' || contract.aadeStatus === 'completed' ? 'checkmark-circle' : 'alert-circle'} 
+                size={18} 
+                color={getAADEStatusMessage(contract.aadeStatus).color} 
+              />
+              <Text style={[s.aadeStatusText, { color: getAADEStatusMessage(contract.aadeStatus).color }]}>
+                {getAADEStatusMessage(contract.aadeStatus).text}
+              </Text>
+            </View>
+            {contract.aadeDclId && (
+              <Text style={s.aadeDclId}>DCL ID: {contract.aadeDclId}</Text>
+            )}
+          </View>
+        )}
+
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Ενοικιαστής</Text>
+          <View style={s.card}>
+            <InfoRow icon="person" label="Όνομα" value={contract.renterInfo?.fullName || 'N/A'} />
+            <InfoRow icon="mail" label="Email" value={contract.renterInfo?.email || 'N/A'} />
+            <InfoRow icon="call" label="Τηλέφωνο" value={contract.renterInfo?.phoneNumber || 'N/A'} />
+            {contract.renterInfo?.licenseNumber && (
+              <InfoRow icon="card" label="Άδεια" value={contract.renterInfo.licenseNumber} />
+            )}
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity onPress={() => router.push(`/edit-contract?contractId=${contract.id}`)} style={styles.editButton}>
-            <Text style={styles.editButtonText}>✏️ Επεξεργασία</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleGeneratePDF} 
-            style={[styles.pdfButton, isGeneratingPDF && styles.pdfButtonDisabled]}
-            disabled={isGeneratingPDF}
-          >
-            <Text style={styles.pdfButtonText}>
-              {isGeneratingPDF ? 'Δημιουργία...' : '📄 PDF'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDeleteContract} style={styles.deleteButton}>
-            <Text style={styles.deleteButtonText}>🗑️ Διαγραφή</Text>
-          </TouchableOpacity>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Αυτοκίνητο</Text>
+          <View style={s.card}>
+            <InfoRow icon="car" label="Όχημα" value={contract.carInfo?.makeModel || 'N/A'} />
+            <InfoRow icon="pricetag" label="Πινακίδα" value={contract.carInfo?.licensePlate || 'N/A'} />
+            <InfoRow icon="speedometer" label="Χιλιόμετρα" value={`${contract.carInfo?.mileage || 0} km`} />
+            <InfoRow icon="water" label="Καύσιμο" value={`${contract.carInfo?.fuelLevel || 0}%`} />
+          </View>
         </View>
 
-        {/* Renter Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Στοιχεία Ενοικιαστή</Text>
-          <Text style={styles.detailText}>Ονοματεπώνυμο: {contract.renterInfo.fullName}</Text>
-          <Text style={styles.detailText}>ΑΔΤ/Διαβατήριο: {contract.renterInfo.idNumber}</Text>
-          <Text style={styles.detailText}>ΑΦΜ: {contract.renterInfo.taxId || 'N/A'}</Text>
-          <Text style={styles.detailText}>Δίπλωμα Οδήγησης: {contract.renterInfo.driverLicenseNumber || 'N/A'}</Text>
-          <Text style={styles.detailText}>Τηλέφωνο: {contract.renterInfo.phoneNumber}</Text>
-          <Text style={styles.detailText}>Email: {contract.renterInfo.email}</Text>
-          <Text style={styles.detailText}>Διεύθυνση: {contract.renterInfo.address}</Text>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Περίοδος & Κόστος</Text>
+          <View style={s.card}>
+            <InfoRow icon="calendar" label="Παραλαβή" value={contract.rentalPeriod?.pickupDate ? new Date(contract.rentalPeriod.pickupDate).toLocaleDateString('el-GR') : 'N/A'} />
+            <InfoRow icon="calendar" label="Επιστροφή" value={contract.rentalPeriod?.dropoffDate ? new Date(contract.rentalPeriod.dropoffDate).toLocaleDateString('el-GR') : 'N/A'} />
+            <InfoRow icon="time" label="Ημέρες" value={(contract.rentalPeriod?.numberOfDays || 0).toString()} />
+            <InfoRow icon="cash" label="Σύνολο" value={`€${contract.rentalPeriod?.totalCost || 0}`} />
+          </View>
         </View>
 
-        {/* Rental Period */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Περίοδος Ενοικίασης</Text>
-          <Text style={styles.detailText}>Παραλαβή: {contract.rentalPeriod.pickupDate ? format(new Date(contract.rentalPeriod.pickupDate), 'dd/MM/yyyy') : 'N/A'} {contract.rentalPeriod.pickupTime} @ {contract.rentalPeriod.pickupLocation}</Text>
-          <Text style={styles.detailText}>Επιστροφή: {contract.rentalPeriod.dropoffDate ? format(new Date(contract.rentalPeriod.dropoffDate), 'dd/MM/yyyy') : 'N/A'} {contract.rentalPeriod.dropoffTime} @ {contract.rentalPeriod.dropoffLocation}</Text>
-          <Text style={styles.detailText}>Συνολικό Κόστος: €{contract.rentalPeriod.totalCost || 0}</Text>
-        </View>
-
-        {/* Car Info & Condition */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Στοιχεία Οχήματος & Κατάσταση</Text>
-          <Text style={styles.detailText}>Μάρκα & Μοντέλο: {contract.carInfo.makeModel || `${contract.carInfo.make || ''} ${contract.carInfo.model || ''}`.trim()}</Text>
-          <Text style={styles.detailText}>Έτος: {contract.carInfo.year}</Text>
-          <Text style={styles.detailText}>Πινακίδα: {contract.carInfo.licensePlate}</Text>
-          <Text style={styles.detailText}>Καύσιμο: {contract.carCondition?.fuelLevel || 'N/A'}/8</Text>
-          <Text style={styles.detailText}>Χιλιόμετρα: {contract.carCondition?.mileage || contract.carInfo.mileage || 'N/A'}</Text>
-          <Text style={styles.detailText}>Ασφάλεια: {contract.carCondition?.insuranceType === 'basic' ? 'Βασική' : contract.carCondition?.insuranceType === 'full' ? 'Πλήρης' : 'N/A'}</Text>
-        </View>
-
-        {/* Damage Points */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Καταγεγραμμένες Ζημιές</Text>
-          {Object.keys(damagePointsByView).length === 0 ? (
-            <Text style={styles.noDataText}>Δεν έχουν καταγραφεί ζημιές.</Text>
-          ) : (
-            Object.entries(damagePointsByView).map(([view, damages]) => (
-              <View key={view} style={styles.damageViewSection}>
-                <Text style={styles.damageViewTitle}>
-                  {view === 'front' ? 'Μπροστινή' : 
-                   view === 'rear' ? 'Πίσω' : 
-                   view === 'left' ? 'Αριστερή' : 'Δεξιά'} Όψη:
-                </Text>
-                {damages.map((damage, index) => (
-                  <Text key={damage.id} style={styles.damageText}>
-                    {index + 1}. Θέση: ({damage.x.toFixed(1)}%, {damage.y.toFixed(1)}%), Σοβαρότητα: {damage.severity}
-                  </Text>
-                ))}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Photos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Φωτογραφίες</Text>
-          {contract.photoUris.length === 0 ? (
-            <Text style={styles.noDataText}>Δεν υπάρχουν φωτογραφίες.</Text>
-          ) : (
-            <View style={styles.photoGrid}>
-              {contract.photoUris.map((uri, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleImagePress(uri)}
-                  style={styles.photoContainer}
-                >
-                  <Image source={{ uri }} style={styles.photo} />
-                </TouchableOpacity>
+        {contract.damagePoints && contract.damagePoints.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Ζημιές ({contract.damagePoints.length})</Text>
+            <View style={s.card}>
+              {contract.damagePoints.map((d, idx) => (
+                <View key={idx} style={s.damageRow}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.error} />
+                  <Text style={s.damageText}>{d.description || 'Ζημιά'} ({d.severity})</Text>
+                </View>
               ))}
             </View>
-          )}
+          </View>
+        )}
+
+        <View style={s.actions}>
+          <TouchableOpacity style={s.btn} onPress={handleEdit}>
+            <Ionicons name="create" size={18} color="#fff" />
+            <Text style={s.btnText}>Επεξεργασία</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.btn, s.btnSecondary]} onPress={handleGeneratePDF} disabled={generating}>
+            <Ionicons name="document-text" size={18} color="#fff" />
+            <Text style={s.btnText}>{generating ? 'Δημιουργία...' : 'PDF'}</Text>
+          </TouchableOpacity>
         </View>
 
+        {/* AADE Push Button */}
+        <TouchableOpacity 
+          style={[s.aadeButton, submittingAADE && s.aadeButtonDisabled]} 
+          onPress={handlePushToAADE}
+          disabled={submittingAADE}
+        >
+          {submittingAADE ? (
+            <>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={s.aadeButtonText}>Αποστολή στο AADE...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="cloud-upload" size={20} color="#fff" />
+              <Text style={s.aadeButtonText}>Αποστολή στο AADE</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
-      
-      <ImageModal
-        visible={isImageModalVisible}
-        imageUri={selectedImageUri}
-        onClose={handleCloseImageModal}
-      />
 
       <BottomTabBar />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 20,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  header: {
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 14, color: Colors.textSecondary },
+  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
+  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
+  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  content: { flex: 1, padding: 8 },
+  scrollContent: { paddingBottom: 120 },
+  aadeStatusContainer: { marginBottom: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, ...Shadows.sm },
+  aadeBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8 },
+  aadeStatusText: { fontSize: 14, fontWeight: '600' },
+  aadeDclId: { fontSize: 12, color: Colors.textSecondary, marginTop: 8, fontFamily: 'monospace' },
+  section: { marginBottom: 12 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary, marginBottom: 6, marginLeft: 4, textTransform: 'uppercase' },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, ...Shadows.sm },
+  infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 },
+  infoLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500', minWidth: 80 },
+  infoValue: { fontSize: 13, color: Colors.text, flex: 1, fontWeight: '600' },
+  damageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+  damageText: { fontSize: 12, color: Colors.textSecondary, flex: 1 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 8 },
+  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, padding: 12, borderRadius: 12 },
+  btnSecondary: { backgroundColor: Colors.success },
+  btnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  aadeButton: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 10,
-    minHeight: 50,
-  },
-  headerTitleContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    numberOfLines: 1,
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 20,
     gap: 10,
+    backgroundColor: '#FF6B35',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    ...Shadows.sm,
   },
-  editButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
+  aadeButtonDisabled: {
+    opacity: 0.6,
   },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  pdfButton: {
-    backgroundColor: '#28a745',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
-  },
-  pdfButtonDisabled: {
-    backgroundColor: '#6c757d',
-  },
-  pdfButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  deleteButton: {
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#555',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingBottom: 5,
-  },
-  detailText: {
+  aadeButtonText: {
     fontSize: 16,
-    marginBottom: 5,
-    color: '#333',
-  },
-  noDataText: {
-    fontSize: 16,
-    color: '#888',
-    fontStyle: 'italic',
-  },
-  damageViewSection: {
-    marginTop: 10,
-    paddingLeft: 10,
-    borderLeftWidth: 2,
-    borderLeftColor: '#007AFF',
-    marginBottom: 10,
-  },
-  damageViewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 5,
-    color: '#007AFF',
-  },
-  damageText: {
-    fontSize: 14,
-    marginBottom: 3,
-    color: '#333',
-  },
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-  },
-  photoContainer: {
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  photo: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    resizeMode: 'cover',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
 });

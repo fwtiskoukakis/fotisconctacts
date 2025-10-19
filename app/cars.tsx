@@ -3,372 +3,183 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Image,
+  ScrollView,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
-import { ContextAwareFab } from '../components/context-aware-fab';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { SimpleGlassCard } from '../components/glass-card';
+import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
 import { supabase } from '../utils/supabase';
 
 interface Car {
   id: string;
-  make: string;
-  model: string;
   makeModel: string;
-  year?: number;
   licensePlate: string;
-  color?: string;
+  year: number;
   fuelType: string;
   transmission: string;
   seats: number;
   dailyRate: number;
   isAvailable: boolean;
-  photoUrl?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export default function CarsScreen() {
   const router = useRouter();
   const [cars, setCars] = useState<Car[]>([]);
+  const [filtered, setFiltered] = useState<Car[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
 
   useEffect(() => {
     loadCars();
   }, []);
 
+  useEffect(() => {
+    filterCars();
+  }, [cars, search, filter]);
+
   async function loadCars() {
     try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('cars')
-        .select('*')
+        .select('id,make_model,license_plate,year,fuel_type,transmission,seats,daily_rate,is_available')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error loading cars:', error);
-        Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης αυτοκινήτων');
-        return;
-      }
+      if (error) throw error;
 
-      const mappedCars = data?.map(car => ({
-        id: car.id,
-        make: car.make,
-        model: car.model,
-        makeModel: car.make_model,
-        year: car.year,
-        licensePlate: car.license_plate,
-        color: car.color,
-        fuelType: car.fuel_type,
-        transmission: car.transmission,
-        seats: car.seats,
-        dailyRate: car.daily_rate,
-        isAvailable: car.is_available,
-        photoUrl: car.photo_url,
-        createdAt: car.created_at,
-        updatedAt: car.updated_at,
+      const mapped = data?.map(d => ({
+        id: d.id,
+        makeModel: d.make_model,
+        licensePlate: d.license_plate,
+        year: d.year,
+        fuelType: d.fuel_type,
+        transmission: d.transmission,
+        seats: d.seats,
+        dailyRate: d.daily_rate,
+        isAvailable: d.is_available,
       })) || [];
 
-      setCars(mappedCars);
+      setCars(mapped);
     } catch (error) {
-      console.error('Error loading cars:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης αυτοκινήτων');
-    } finally {
-      setLoading(false);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης');
     }
   }
 
-  async function onRefresh() {
+  function filterCars() {
+    let result = cars;
+    if (filter === 'available') result = result.filter(c => c.isAvailable);
+    if (filter === 'unavailable') result = result.filter(c => !c.isAvailable);
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.makeModel.toLowerCase().includes(q) ||
+        c.licensePlate.toLowerCase().includes(q)
+      );
+    }
+    setFiltered(result);
+  }
+
+  const onRefresh = async () => {
     setRefreshing(true);
     await loadCars();
     setRefreshing(false);
-  }
-
-  async function toggleCarAvailability(carId: string, currentStatus: boolean) {
-    try {
-      const { error } = await supabase
-        .from('cars')
-        .update({ is_available: !currentStatus })
-        .eq('id', carId);
-
-      if (error) {
-        console.error('Error updating car availability:', error);
-        Alert.alert('Σφάλμα', 'Αποτυχία ενημέρωσης κατάστασης');
-        return;
-      }
-
-      // Update local state
-      setCars(cars.map(car => 
-        car.id === carId 
-          ? { ...car, isAvailable: !currentStatus }
-          : car
-      ));
-    } catch (error) {
-      console.error('Error updating car availability:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία ενημέρωσης κατάστασης');
-    }
-  }
-
-  function renderCarItem({ item }: { item: Car }) {
-    return (
-      <TouchableOpacity
-        style={[styles.carItem, Glassmorphism.light]}
-        onPress={() => router.push(`/car-details?carId=${item.id}`)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.carHeader}>
-          <View style={styles.carImageContainer}>
-            {item.photoUrl ? (
-              <Image source={{ uri: item.photoUrl }} style={styles.carImage} />
-            ) : (
-              <View style={styles.carImagePlaceholder}>
-                <Text style={styles.carImageIcon}>🚗</Text>
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.carInfo}>
-            <Text style={styles.carName} numberOfLines={1}>
-              {item.makeModel}
-            </Text>
-            <Text style={styles.carDetails} numberOfLines={1}>
-              {item.year} • {item.color} • {item.licensePlate}
-            </Text>
-            <Text style={styles.carSpecs}>
-              {item.fuelType} • {item.transmission} • {item.seats} θέσεις
-            </Text>
-          </View>
-
-          <View style={styles.carActions}>
-            <TouchableOpacity
-              style={[
-                styles.availabilityButton,
-                item.isAvailable ? styles.availableButton : styles.unavailableButton
-              ]}
-              onPress={() => toggleCarAvailability(item.id, item.isAvailable)}
-            >
-              <Text style={[
-                styles.availabilityText,
-                item.isAvailable ? styles.availableText : styles.unavailableText
-              ]}>
-                {item.isAvailable ? 'Διαθέσιμο' : 'Μη Διαθέσιμο'}
-              </Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.dailyRate}>€{item.dailyRate}/ημέρα</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  function renderEmptyState() {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🚗</Text>
-        <Text style={styles.emptyTitle}>Δεν υπάρχουν αυτοκίνητα</Text>
-        <Text style={styles.emptySubtitle}>
-          Πατήστε το κουμπί "+" για να προσθέσετε το πρώτο αυτοκίνητο
-        </Text>
-      </View>
-    );
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Αυτοκίνητα" showActions={true} />
-      
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: Colors.primary }]}>
-          <Text style={styles.statValue}>{cars.length}</Text>
-          <Text style={styles.statLabel}>Συνολικά</Text>
-        </View>
-        
-        <View style={[styles.statCard, { backgroundColor: Colors.success }]}>
-          <Text style={styles.statValue}>{cars.filter(c => c.isAvailable).length}</Text>
-          <Text style={styles.statLabel}>Διαθέσιμα</Text>
-        </View>
-        
-        <View style={[styles.statCard, { backgroundColor: Colors.warning }]}>
-          <Text style={styles.statValue}>{cars.filter(c => !c.isAvailable).length}</Text>
-          <Text style={styles.statLabel}>Ενοικιασμένα</Text>
-        </View>
+    <SafeAreaView style={s.container} edges={['top']}>
+      <AppHeader title="Αυτοκίνητα" showBack={true} showActions={true} />
+
+      <View style={s.breadcrumb}>
+        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
+          <Ionicons name="home" size={14} color={Colors.primary} />
+          <Text style={s.breadcrumbText}>Αρχική</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <Text style={s.breadcrumbCurrent}>Αυτοκίνητα</Text>
       </View>
 
-      {/* Cars List */}
-      <FlatList
-        data={cars}
-        renderItem={renderCarItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          cars.length === 0 && styles.listContentEmpty
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
+      <View style={s.topBar}>
+        <View style={s.searchBox}>
+          <Ionicons name="search" size={16} color={Colors.textSecondary} />
+          <TextInput style={s.searchInput} placeholder="Αναζήτηση..." value={search} onChangeText={setSearch} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters}>
+          {([['all', 'Όλα'], ['available', 'Διαθέσιμα'], ['unavailable', 'Μη Διαθέσιμα']] as const).map(([f, label]) => (
+            <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
+              <Text style={[s.filterText, filter === f && s.filterTextActive]}>
+                {label} ({cars.filter(c => f === 'all' || (f === 'available' ? c.isAvailable : !c.isAvailable)).length})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* Context-Aware Floating Action Button */}
-      <ContextAwareFab
-        onNewCar={() => router.push('/add-car')}
-        onCarMaintenance={() => {
-          Alert.alert('Συνέχεια', 'Η λειτουργία συντήρησης αυτοκινήτων θα προστεθεί σύντομα');
-        }}
-        onCarInspection={() => {
-          Alert.alert('Συνέχεια', 'Η λειτουργία επιθεώρησης αυτοκινήτων θα προστεθεί σύντομα');
-        }}
-      />
+      <ScrollView style={s.list} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        {filtered.map(c => (
+          <TouchableOpacity key={c.id} style={s.card} onPress={() => router.push(`/car-details?carId=${c.id}`)}>
+            <View style={s.row}>
+              <View style={s.left}>
+                <Text style={s.name} numberOfLines={1}>{c.makeModel}</Text>
+                <Text style={s.detail}>{c.licensePlate} • {c.year}</Text>
+                <Text style={s.detail}>{c.fuelType} • {c.transmission} • {c.seats} θέσεις</Text>
+              </View>
+              <View style={s.right}>
+                <View style={[s.badge, { backgroundColor: c.isAvailable ? Colors.success + '15' : Colors.error + '15' }]}>
+                  <Text style={[s.badgeText, { color: c.isAvailable ? Colors.success : Colors.error }]}>
+                    {c.isAvailable ? 'Διαθέσιμο' : 'Μη Διαθέσιμο'}
+                  </Text>
+                </View>
+                <Text style={s.price}>€{c.dailyRate}/ημ</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+        {filtered.length === 0 && (
+          <View style={s.empty}>
+            <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
+            <Text style={s.emptyText}>Δεν βρέθηκαν αυτοκίνητα</Text>
+          </View>
+        )}
+      </ScrollView>
 
       <BottomTabBar />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    ...Shadows.md,
-  },
-  statValue: {
-    ...Typography.h3,
-    color: Colors.textInverse,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    ...Typography.caption,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  },
-  listContent: {
-    padding: Spacing.md,
-    paddingBottom: 100, // Space for tab bar
-  },
-  listContentEmpty: {
-    flex: 1,
-  },
-  carItem: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadows.md,
-  },
-  carHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  carImageContainer: {
-    marginRight: Spacing.md,
-  },
-  carImage: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.md,
-  },
-  carImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  carImageIcon: {
-    fontSize: 24,
-  },
-  carInfo: {
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  carName: {
-    ...Typography.h4,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  carDetails: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  carSpecs: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-  },
-  carActions: {
-    alignItems: 'flex-end',
-  },
-  availabilityButton: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    marginBottom: Spacing.xs,
-  },
-  availableButton: {
-    backgroundColor: Colors.success,
-  },
-  unavailableButton: {
-    backgroundColor: Colors.error,
-  },
-  availabilityText: {
-    ...Typography.caption,
-    fontWeight: '600',
-  },
-  availableText: {
-    color: Colors.textInverse,
-  },
-  unavailableText: {
-    color: Colors.textInverse,
-  },
-  dailyRate: {
-    ...Typography.bodySmall,
-    color: Colors.primary,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: Spacing.lg,
-  },
-  emptyTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
+  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
+  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  topBar: { backgroundColor: '#fff', padding: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, height: 36, marginBottom: 8, gap: 6 },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text },
+  filters: { flexDirection: 'row', gap: 6 },
+  filterBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f3f4f6', marginRight: 6 },
+  filterBtnActive: { backgroundColor: Colors.primary },
+  filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  filterTextActive: { color: '#fff' },
+  list: { flex: 1, padding: 8 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, ...Shadows.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  left: { flex: 1, marginRight: 8 },
+  name: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  detail: { fontSize: 12, color: Colors.textSecondary, marginBottom: 2 },
+  right: { alignItems: 'flex-end', gap: 6 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  empty: { alignItems: 'center', paddingVertical: 48 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
 });

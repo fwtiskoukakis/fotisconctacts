@@ -4,48 +4,17 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useRouter, usePathname } from 'expo-router';
-import { Colors, Typography, Spacing, BorderRadius, Glassmorphism } from '../utils/design-system';
-
-const { width, height } = Dimensions.get('window');
-
-// Responsive sizing based on screen width
-const isSmallDevice = width < 375;
-const isMediumDevice = width >= 375 && width < 414;
-const isLargeDevice = width >= 414;
-
-// Calculate responsive font sizes
-const getResponsiveFontSize = () => {
-  if (isSmallDevice) return 10;
-  if (isMediumDevice) return 11;
-  return 12; // Large devices like iPhone 15 Pro Max
-};
-
-const getResponsiveIconSize = () => {
-  if (isSmallDevice) return 18;
-  if (isMediumDevice) return 20;
-  return 22; // Large devices
-};
-
-const getResponsiveIconSizeActive = () => {
-  if (isSmallDevice) return 20;
-  if (isMediumDevice) return 22;
-  return 24; // Large devices
-};
-
-const getResponsivePadding = () => {
-  if (isSmallDevice) return 6;
-  if (isMediumDevice) return 8;
-  return 10; // Large devices
-};
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing } from '../utils/design-system';
 
 interface TabItem {
   key: string;
   label: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   route: string;
 }
 
@@ -53,37 +22,31 @@ const tabs: TabItem[] = [
   {
     key: 'home',
     label: 'Αρχική',
-    icon: '🏠',
+    icon: 'home',
     route: '/',
   },
   {
     key: 'contracts',
     label: 'Συμβόλαια',
-    icon: '📋',
+    icon: 'document-text',
     route: '/contracts',
   },
   {
     key: 'damage',
     label: 'Ζημιές',
-    icon: '⚠️',
+    icon: 'warning',
     route: '/damage-report',
   },
   {
     key: 'cars',
     label: 'Αυτοκίνητα',
-    icon: '🚗',
+    icon: 'car-sport',
     route: '/cars',
-  },
-  {
-    key: 'analytics',
-    label: 'Αναφορές',
-    icon: '📊',
-    route: '/analytics',
   },
   {
     key: 'profile',
     label: 'Προφίλ',
-    icon: '👤',
+    icon: 'person-circle',
     route: '/profile',
   },
 ];
@@ -113,35 +76,37 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => {
-          const active = isActive(tab.route);
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, active && styles.activeTab]}
-              onPress={() => handleTabPress(tab)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.tabContent, active && styles.activeTabContent]}>
-                <Text style={[styles.tabIcon, active && styles.activeTabIcon]}>
-                  {tab.icon}
-                </Text>
-                <Text 
-                  style={[styles.tabLabel, active && styles.activeTabLabel]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  adjustsFontSizeToFit={isLargeDevice}
-                  minimumFontScale={0.8}
-                >
-                  {tab.label}
-                </Text>
-              </View>
-              {active && <View style={styles.activeIndicator} />}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <BlurView intensity={80} tint="light" style={styles.blurContainer}>
+        <View style={styles.tabBar}>
+          {tabs.map((tab) => {
+            const active = isActive(tab.route);
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={styles.tab}
+                onPress={() => handleTabPress(tab)}
+                activeOpacity={0.6}
+              >
+                {active && <View style={styles.activeBackground} />}
+                <View style={styles.tabContent}>
+                  <Ionicons 
+                    name={tab.icon} 
+                    size={active ? 26 : 24} 
+                    color={active ? Colors.primary : '#8E8E93'} 
+                    style={styles.icon}
+                  />
+                  <Text 
+                    style={[styles.tabLabel, active && styles.activeTabLabel]}
+                    numberOfLines={1}
+                  >
+                    {tab.label}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BlurView>
     </View>
   );
 }
@@ -152,71 +117,68 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
-    paddingHorizontal: Spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingHorizontal: 8,
+    backgroundColor: 'transparent',
+  },
+  blurContainer: {
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 12,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: BorderRadius.xl,
-    paddingVertical: getResponsivePadding(),
-    paddingHorizontal: Spacing.xs,
-    ...Glassmorphism.light,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: isLargeDevice ? 70 : 65,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minHeight: 72,
+    alignItems: 'center',
+    justifyContent: 'space-around',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: getResponsivePadding(),
+    paddingVertical: 8,
     paddingHorizontal: 2,
-    borderRadius: BorderRadius.lg,
     position: 'relative',
   },
-  activeTab: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+  activeBackground: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.12)',
   },
   tabContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: isLargeDevice ? 4 : 2,
+    gap: 4,
+    zIndex: 1,
   },
-  activeTabContent: {
-    // Additional styling for active state
-  },
-  tabIcon: {
-    fontSize: getResponsiveIconSize(),
-    marginBottom: 1,
-    lineHeight: getResponsiveIconSize() + 2,
-  },
-  activeTabIcon: {
-    fontSize: getResponsiveIconSizeActive(),
-    lineHeight: getResponsiveIconSizeActive() + 2,
+  icon: {
+    marginBottom: 2,
   },
   tabLabel: {
-    fontSize: getResponsiveFontSize(),
-    lineHeight: getResponsiveFontSize() + 4,
-    color: Colors.textSecondary,
+    fontSize: 10.5,
+    color: '#8E8E93',
     fontWeight: '500',
     textAlign: 'center',
-    letterSpacing: 0.2,
-    maxWidth: '100%',
+    letterSpacing: -0.1,
   },
   activeTabLabel: {
     color: Colors.primary,
     fontWeight: '600',
-    fontSize: getResponsiveFontSize() + 0.5,
-  },
-  activeIndicator: {
-    position: 'absolute',
-    top: isLargeDevice ? 6 : 4,
-    left: '50%',
-    marginLeft: -4,
-    width: 8,
-    height: 3,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.full,
+    fontSize: 11,
   },
 });

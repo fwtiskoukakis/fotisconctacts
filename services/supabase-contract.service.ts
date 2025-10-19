@@ -190,6 +190,8 @@ export class SupabaseContractService {
       clientSignature: data.client_signature_url || '',
       
       status,
+      aadeStatus: data.aade_status || null,
+      aadeDclId: data.aade_dcl_id || null,
       createdAt: new Date(data.created_at),
     };
   }

@@ -72,6 +72,9 @@ export interface Contract {
   photoUris: string[];
   clientSignature: string; // Base64 encoded signature image
   userId: string; // ID of the user who created the contract
+  status: 'active' | 'completed' | 'upcoming'; // Calculated from rental dates
+  aadeStatus?: 'pending' | 'submitted' | 'completed' | 'cancelled' | 'error' | null; // AADE submission status
+  aadeDclId?: number | null; // AADE Digital Client ID
   createdAt: Date;
 }
 

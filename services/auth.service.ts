@@ -178,20 +178,27 @@ export class AuthService {
    */
   static async getUserProfile(userId: string) {
     try {
+      // Explicitly list only columns that exist in the database
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id,name,signature_url,aade_enabled,aade_user_id,aade_subscription_key,company_vat_number,company_name,company_address,company_activity,created_at,updated_at')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error getting user profile:', error);
+        console.error('Error details:', JSON.stringify(error));
+        return null;
+      }
+
+      if (!data) {
+        console.warn('No user profile found for ID:', userId);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error getting user profile:', error);
+      console.error('Unexpected error getting user profile:', error);
       return null;
     }
   }

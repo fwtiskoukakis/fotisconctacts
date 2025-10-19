@@ -3,322 +3,184 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ScrollView,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
-import { Breadcrumb } from '../components/breadcrumb';
-import { BulkOperations } from '../components/bulk-operations';
-import { ContextAwareFab } from '../components/context-aware-fab';
+import { SimpleGlassCard } from '../components/glass-card';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { Contract } from '../models/contract.interface';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { Colors, Typography, Spacing, Shadows, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
+import { getAADEStatusMessage } from '../utils/aade-contract-helper';
 
 export default function ContractsScreen() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
-  const [showBulkOperations, setShowBulkOperations] = useState(false);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'upcoming'>('all');
 
   useEffect(() => {
     loadContracts();
   }, []);
 
+  useEffect(() => {
+    filterContracts();
+  }, [contracts, searchQuery, filter]);
+
   async function loadContracts() {
     try {
-      setLoading(true);
-      const loadedContracts = await SupabaseContractService.getAllContracts();
-      setContracts(loadedContracts);
+      const data = await SupabaseContractService.getAllContracts();
+      
+      // Add example AADE status to first two contracts for demonstration
+      const contractsWithAADE = data.map((contract, index) => {
+        if (index === 0) {
+          return { ...contract, aadeStatus: 'submitted' as const, aadeDclId: 123456 };
+        } else if (index === 1) {
+          return { ...contract, aadeStatus: 'completed' as const, aadeDclId: 789012 };
+        }
+        return contract;
+      });
+      
+      setContracts(contractsWithAADE);
     } catch (error) {
-      console.error('Error loading contracts:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης συμβολαίων');
-    } finally {
-      setLoading(false);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης');
     }
   }
 
-  async function onRefresh() {
+  function filterContracts() {
+    let result = contracts;
+    if (filter !== 'all') result = result.filter(c => c.status === filter);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c =>
+        c.renterInfo.fullName.toLowerCase().includes(q) ||
+        c.carInfo.licensePlate.toLowerCase().includes(q)
+      );
+    }
+    setFilteredContracts(result);
+  }
+
+  const onRefresh = async () => {
     setRefreshing(true);
     await loadContracts();
     setRefreshing(false);
-  }
+  };
 
-  function toggleSelectionMode() {
-    setIsSelectionMode(!isSelectionMode);
-    setSelectedContracts(new Set());
-  }
-
-  function toggleContractSelection(contractId: string) {
-    const newSelection = new Set(selectedContracts);
-    if (newSelection.has(contractId)) {
-      newSelection.delete(contractId);
-    } else {
-      newSelection.add(contractId);
-    }
-    setSelectedContracts(newSelection);
-  }
-
-  function selectAllContracts() {
-    const allIds = new Set(contracts.map(c => c.id));
-    setSelectedContracts(allIds);
-  }
-
-  function clearSelection() {
-    setSelectedContracts(new Set());
-  }
-
-  function openBulkOperations() {
-    if (selectedContracts.size === 0) {
-      Alert.alert('Επιλογή Απαιτείται', 'Παρακαλώ επιλέξτε τουλάχιστον ένα συμβόλαιο');
-      return;
-    }
-    setShowBulkOperations(true);
-  }
-
-  function handleBulkOperationsComplete() {
-    setShowBulkOperations(false);
-    setSelectedContracts(new Set());
-    setIsSelectionMode(false);
-    loadContracts(); // Refresh the list
-  }
-
-  function formatDate(date: Date): string {
-    const d = new Date(date);
-    return d.toLocaleDateString('el-GR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
-    });
-  }
-
-  function getStatusColor(status: string) {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
-        return Colors.success;
-      case 'completed':
-        return Colors.textSecondary;
-      case 'cancelled':
-        return Colors.error;
-      default:
-        return Colors.textSecondary;
+      case 'active': return Colors.success;
+      case 'upcoming': return Colors.info;
+      default: return Colors.textSecondary;
     }
-  }
+  };
 
-  function getStatusText(status: string) {
+  const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'Ενεργό';
-      case 'completed':
-        return 'Ολοκληρωμένο';
-      case 'cancelled':
-        return 'Ακυρωμένο';
-      default:
-        return 'Άγνωστο';
+      case 'active': return 'Ενεργό';
+      case 'upcoming': return 'Επερχόμενο';
+      case 'completed': return 'Τέλος';
+      default: return status;
     }
-  }
-
-  function renderContractItem({ item }: { item: Contract }) {
-    const pickupDate = formatDate(item.rentalPeriod.pickupDate);
-    const dropoffDate = formatDate(item.rentalPeriod.dropoffDate);
-    const isSelected = selectedContracts.has(item.id);
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.contractItem, 
-          Glassmorphism.light,
-          isSelected && styles.contractItemSelected
-        ]}
-        onPress={() => {
-          if (isSelectionMode) {
-            toggleContractSelection(item.id);
-          } else {
-            router.push(`/contract-details?contractId=${item.id}`);
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        {isSelectionMode && (
-          <View style={styles.selectionIndicator}>
-            <View style={[
-              styles.selectionCheckbox,
-              isSelected && styles.selectionCheckboxSelected
-            ]}>
-              {isSelected && <Text style={styles.selectionCheckmark}>✓</Text>}
-            </View>
-          </View>
-        )}
-        
-        <View style={styles.contractHeader}>
-          <View style={styles.contractMainInfo}>
-            <Text style={styles.contractName} numberOfLines={1}>
-              {item.renterInfo.fullName}
-            </Text>
-            <Text style={styles.contractCar} numberOfLines={1}>
-              {item.carInfo.makeModel || `${item.carInfo.make || ''} ${item.carInfo.model || ''}`.trim()} • {item.carInfo.licensePlate}
-            </Text>
-          </View>
-          
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status || 'active') }]}>
-              <Text style={styles.statusText}>
-                {getStatusText(item.status || 'active')}
-              </Text>
-            </View>
-          </View>
-        </View>
-        
-        <View style={styles.contractDetails}>
-          <View style={styles.dateInfo}>
-            <Text style={styles.dateLabel}>Παραλαβή:</Text>
-            <Text style={styles.dateValue}>
-              {pickupDate} • {item.rentalPeriod.pickupTime}
-            </Text>
-          </View>
-          <View style={styles.dateInfo}>
-            <Text style={styles.dateLabel}>Επιστροφή:</Text>
-            <Text style={styles.dateValue}>
-              {dropoffDate} • {item.rentalPeriod.dropoffTime}
-            </Text>
-          </View>
-          <View style={styles.costInfo}>
-            <Text style={styles.costLabel}>Κόστος:</Text>
-            <Text style={styles.costValue}>€{item.rentalPeriod.totalCost || 0}</Text>
-          </View>
-        </View>
-
-        <View style={styles.contractFooter}>
-          <Text style={styles.locationText} numberOfLines={1}>
-            📍 {item.rentalPeriod.pickupLocation}
-          </Text>
-          {item.damagePoints.length > 0 && (
-            <Text style={styles.damageIndicator}>
-              ⚠️ {item.damagePoints.length} ζημιές
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  function renderEmptyState() {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📋</Text>
-        <Text style={styles.emptyTitle}>Δεν υπάρχουν συμβόλαια</Text>
-        <Text style={styles.emptySubtitle}>
-          Πατήστε το κουμπί "+" για να δημιουργήσετε το πρώτο συμβόλαιο
-        </Text>
-      </View>
-    );
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Συμβόλαια" showActions={true}>
-        <TouchableOpacity
-          style={styles.headerActionButton}
-          onPress={toggleSelectionMode}
-        >
-          <Text style={styles.headerActionText}>
-            {isSelectionMode ? 'Ακύρωση' : 'Επιλογή'}
-          </Text>
-        </TouchableOpacity>
-      </AppHeader>
-      
+      <AppHeader title="Συμβόλαια" showBack={true} showActions={true} />
+
       {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: 'Αρχική', path: '/' },
-          { label: 'Συμβόλαια' },
-        ]}
-      />
-      
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: Colors.primary }]}>
-          <Text style={styles.statValue}>{contracts.length}</Text>
-          <Text style={styles.statLabel}>Συνολικά</Text>
-        </View>
-        
-        <View style={[styles.statCard, { backgroundColor: Colors.success }]}>
-          <Text style={styles.statValue}>{contracts.filter(c => c.status === 'active').length}</Text>
-          <Text style={styles.statLabel}>Ενεργά</Text>
-        </View>
-        
-        <View style={[styles.statCard, { backgroundColor: Colors.info }]}>
-          <Text style={styles.statValue}>{contracts.filter(c => c.status === 'completed').length}</Text>
-          <Text style={styles.statLabel}>Ολοκληρωμένα</Text>
-        </View>
+      <View style={styles.breadcrumb}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
+          <Ionicons name="home" size={14} color={Colors.primary} />
+          <Text style={styles.breadcrumbText}>Αρχική</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <Text style={styles.breadcrumbCurrent}>Συμβόλαια</Text>
       </View>
 
-      {/* Bulk Operations Toolbar */}
-      {isSelectionMode && (
-        <View style={styles.bulkToolbar}>
-          <View style={styles.selectionInfo}>
-            <Text style={styles.selectionText}>
-              {selectedContracts.size} επιλεγμένα
-            </Text>
-          </View>
-          <View style={styles.bulkActions}>
-            <TouchableOpacity
-              style={styles.bulkActionButton}
-              onPress={selectAllContracts}
-            >
-              <Text style={styles.bulkActionText}>Όλα</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bulkActionButton}
-              onPress={clearSelection}
-            >
-              <Text style={styles.bulkActionText}>Καθαρισμός</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bulkActionButton, styles.bulkActionPrimary]}
-              onPress={openBulkOperations}
-            >
-              <Text style={styles.bulkActionPrimaryText}>Ενέργειες</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Search & Filters */}
+      <View style={styles.topBar}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={16} color={Colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Αναζήτηση..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
-      )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
+          {(['all', 'active', 'upcoming', 'completed'] as const).map(f => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+              onPress={() => setFilter(f)}
+            >
+              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
+                {f === 'all' ? 'Όλα' : getStatusLabel(f)} ({contracts.filter(c => f === 'all' || c.status === f).length})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* Contracts List */}
-      <FlatList
-        data={contracts}
-        renderItem={renderContractItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          contracts.length === 0 && styles.listContentEmpty
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Bulk Operations Modal */}
-      <BulkOperations
-        visible={showBulkOperations}
-        onClose={() => setShowBulkOperations(false)}
-        selectedContracts={contracts.filter(c => selectedContracts.has(c.id))}
-        onContractsUpdated={handleBulkOperationsComplete}
-      />
-
-      {/* Context-Aware Floating Action Button */}
-      <ContextAwareFab
-        onNewContract={() => router.push('/new-contract')}
-      />
+      {/* List */}
+      <ScrollView
+        style={styles.list}
+        {...smoothScrollConfig}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {filteredContracts.map(c => (
+          <TouchableOpacity
+            key={c.id}
+            style={styles.card}
+            onPress={() => router.push(`/contract-details?contractId=${c.id}`)}
+          >
+            <View style={styles.row}>
+              <View style={styles.left}>
+                <Text style={styles.name} numberOfLines={1}>{c.renterInfo.fullName}</Text>
+                <Text style={styles.detail} numberOfLines={1}>
+                  {c.carInfo.makeModel} • {c.carInfo.licensePlate}
+                </Text>
+                <Text style={styles.date}>
+                  {new Date(c.rentalPeriod.pickupDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} - {new Date(c.rentalPeriod.dropoffDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })}
+                </Text>
+              </View>
+              <View style={styles.right}>
+                <View style={[styles.badge, { backgroundColor: getStatusColor(c.status) + '15' }]}>
+                  <Text style={[styles.badgeText, { color: getStatusColor(c.status) }]}>
+                    {getStatusLabel(c.status)}
+                  </Text>
+                </View>
+                <Text style={styles.price}>€{c.rentalPeriod.totalCost}</Text>
+                
+                {/* AADE Status Badge */}
+                {(c.aadeStatus === 'submitted' || c.aadeStatus === 'completed') && (
+                  <View style={styles.aadeBadge}>
+                    <Ionicons name="cloud-done" size={12} color="#28a745" />
+                    <Text style={styles.aadeBadgeText}>ΑΑΔΕ</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+        {filteredContracts.length === 0 && (
+          <View style={styles.empty}>
+            <Ionicons name="document-outline" size={48} color={Colors.textSecondary} />
+            <Text style={styles.emptyText}>Δεν βρέθηκαν συμβόλαια</Text>
+          </View>
+        )}
+      </ScrollView>
 
       <BottomTabBar />
     </SafeAreaView>
@@ -326,252 +188,90 @@ export default function ContractsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    ...Shadows.md,
-  },
-  statValue: {
-    ...Typography.h3,
-    color: Colors.textInverse,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    ...Typography.caption,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  },
-  listContent: {
-    padding: Spacing.md,
-    paddingBottom: 100, // Space for tab bar
-  },
-  listContentEmpty: {
-    flex: 1,
-  },
-  contractItem: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadows.md,
-  },
-  contractHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
-  },
-  contractMainInfo: {
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  contractName: {
-    ...Typography.h4,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  contractCar: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-  },
-  statusContainer: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-  },
-  statusText: {
-    ...Typography.caption,
-    color: Colors.textInverse,
-    fontWeight: '600',
-  },
-  contractDetails: {
-    marginBottom: Spacing.sm,
-  },
-  dateInfo: {
+  container: { flex: 1, backgroundColor: Colors.background },
+  breadcrumb: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-  },
-  dateLabel: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    width: 80,
-  },
-  dateValue: {
-    ...Typography.caption,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  costInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  costLabel: {
-    ...Typography.bodySmall,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  costValue: {
-    ...Typography.bodySmall,
-    color: Colors.primary,
-    fontWeight: 'bold',
-  },
-  contractFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-  },
-  locationText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  damageIndicator: {
-    ...Typography.caption,
-    color: Colors.warning,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: Spacing.lg,
-  },
-  emptyTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 100,
-    right: Spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.lg,
-  },
-  fabIcon: {
-    fontSize: 24,
-    color: Colors.textInverse,
-    fontWeight: 'bold',
-  },
-  headerActionButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-  },
-  headerActionText: {
-    ...Typography.bodySmall,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  bulkToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: '#e5e7eb',
+    gap: 6,
   },
-  selectionInfo: {
-    flex: 1,
+  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
+  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  topBar: {
+    backgroundColor: '#fff',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  selectionText: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  bulkActions: {
+  searchBox: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  bulkActionButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.background,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  bulkActionText: {
-    ...Typography.bodySmall,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  bulkActionPrimary: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  bulkActionPrimaryText: {
-    ...Typography.bodySmall,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  contractItemSelected: {
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  selectionIndicator: {
-    position: 'absolute',
-    top: Spacing.sm,
-    left: Spacing.sm,
-    zIndex: 1,
-  },
-  selectionCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    height: 36,
+    marginBottom: 8,
+    gap: 6,
   },
-  selectionCheckboxSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text },
+  filters: { flexDirection: 'row', gap: 6 },
+  filterBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    marginRight: 6,
   },
-  selectionCheckmark: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  filterBtnActive: { backgroundColor: Colors.primary },
+  filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  filterTextActive: { color: '#fff' },
+  list: { flex: 1, padding: 8 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    ...Shadows.sm,
   },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  left: { flex: 1, marginRight: 8 },
+  name: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  detail: { fontSize: 13, color: Colors.textSecondary, marginBottom: 4 },
+  date: { fontSize: 12, color: Colors.textTertiary },
+  right: { alignItems: 'flex-end', gap: 6 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  price: { fontSize: 16, fontWeight: '700', color: Colors.primary },
+  aadeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#28a74515',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#28a74530',
+  },
+  aadeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#28a745',
+    letterSpacing: 0.5,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
 });
+

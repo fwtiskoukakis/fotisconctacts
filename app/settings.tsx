@@ -1,481 +1,120 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Alert,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
-import { Colors, Typography, Spacing, Shadows, BorderRadius } from '../utils/design-system';
-
-interface SettingsSection {
-  id: string;
-  title: string;
-  items: SettingsItem[];
-}
-
-interface SettingsItem {
-  id: string;
-  title: string;
-  subtitle?: string;
-  icon: string;
-  type: 'navigation' | 'toggle' | 'action';
-  value?: boolean;
-  onPress?: () => void;
-  onToggle?: (value: boolean) => void;
-}
+import { BottomTabBar } from '../components/bottom-tab-bar';
+import { SimpleGlassCard } from '../components/glass-card';
+import { Colors, Typography, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
+import { AuthService } from '../services/auth.service';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [settings, setSettings] = useState({
-    notifications: true,
-    darkMode: false,
-    autoSync: true,
-    biometricAuth: false,
-    emailReports: true,
-  });
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
 
-  const settingsSections: SettingsSection[] = [
-    {
-      id: 'account',
-      title: 'Λογαριασμός',
-      items: [
-        {
-          id: 'profile',
-          title: 'Προφίλ',
-          subtitle: 'Επεξεργασία προσωπικών στοιχείων',
-          icon: '👤',
-          type: 'navigation',
-          onPress: () => router.push('/profile'),
+  const handleSignOut = async () => {
+    Alert.alert('Αποσύνδεση', 'Θέλετε να αποσυνδεθείτε;', [
+      { text: 'Ακύρωση', style: 'cancel' },
+      {
+        text: 'Αποσύνδεση',
+        style: 'destructive',
+        onPress: async () => {
+          await AuthService.signOut();
+          router.replace('/auth/sign-in');
         },
-        {
-          id: 'security',
-          title: 'Ασφάλεια',
-          subtitle: 'Κωδικός πρόσβασης και εισόδος',
-          icon: '🔒',
-          type: 'navigation',
-          onPress: () => router.push('/security'),
-        },
-        {
-          id: 'preferences',
-          title: 'Προτιμήσεις',
-          subtitle: 'Γλώσσα και εμφάνιση',
-          icon: '⚙️',
-          type: 'navigation',
-          onPress: () => router.push('/preferences'),
-        },
-      ],
-    },
-    {
-      id: 'aade',
-      title: 'Ψηφιακό Πελατολόγιο',
-      items: [
-        {
-          id: 'aade-config',
-          title: 'Ρυθμίσεις Πελατολογίου',
-          subtitle: 'Digital Client Registry - ΑΑΔΕ',
-          icon: '🏛️',
-          type: 'navigation',
-          onPress: () => router.push('/aade-settings'),
-        },
-      ],
-    },
-    {
-      id: 'app',
-      title: 'Εφαρμογή',
-      items: [
-        {
-          id: 'notifications',
-          title: 'Ειδοποιήσεις',
-          subtitle: 'Λάβετε ειδοποιήσεις για νέα συμβόλαια',
-          icon: '🔔',
-          type: 'toggle',
-          value: settings.notifications,
-          onToggle: (value) => setSettings(prev => ({ ...prev, notifications: value })),
-        },
-        {
-          id: 'autoSync',
-          title: 'Αυτόματη Συγχρονισμός',
-          subtitle: 'Συγχρονισμός με Supabase',
-          icon: '🔄',
-          type: 'toggle',
-          value: settings.autoSync,
-          onToggle: (value) => setSettings(prev => ({ ...prev, autoSync: value })),
-        },
-        {
-          id: 'darkMode',
-          title: 'Σκοτεινό Θέμα',
-          subtitle: 'Ενεργοποίηση σκοτεινού θέματος',
-          icon: '🌙',
-          type: 'toggle',
-          value: settings.darkMode,
-          onToggle: (value) => setSettings(prev => ({ ...prev, darkMode: value })),
-        },
-      ],
-    },
-    {
-      id: 'security',
-      title: 'Ασφάλεια',
-      items: [
-        {
-          id: 'biometricAuth',
-          title: 'Βιομετρική Εισόδος',
-          subtitle: 'Χρήση δακτυλικού αποτυπώματος ή Face ID',
-          icon: '👆',
-          type: 'toggle',
-          value: settings.biometricAuth,
-          onToggle: (value) => setSettings(prev => ({ ...prev, biometricAuth: value })),
-        },
-        {
-          id: 'sessionTimeout',
-          title: 'Λήξη Συνεδρίας',
-          subtitle: 'Αυτόματη αποσύνδεση μετά από 30 λεπτά',
-          icon: '⏰',
-          type: 'navigation',
-          onPress: () => router.push('/session-settings'),
-        },
-      ],
-    },
-    {
-      id: 'data',
-      title: 'Δεδομένα',
-      items: [
-        {
-          id: 'backup',
-          title: 'Αντίγραφο Ασφαλείας',
-          subtitle: 'Δημιουργία αντιγράφου ασφαλείας',
-          icon: '💾',
-          type: 'action',
-          onPress: () => handleBackup(),
-        },
-        {
-          id: 'export',
-          title: 'Εξαγωγή Δεδομένων',
-          subtitle: 'Εξαγωγή συμβολαίων σε CSV',
-          icon: '📤',
-          type: 'action',
-          onPress: () => handleExport(),
-        },
-        {
-          id: 'clearData',
-          title: 'Εκκαθάριση Δεδομένων',
-          subtitle: 'Διαγραφή όλων των τοπικών δεδομένων',
-          icon: '🗑️',
-          type: 'action',
-          onPress: () => handleClearData(),
-        },
-      ],
-    },
-    {
-      id: 'support',
-      title: 'Υποστήριξη',
-      items: [
-        {
-          id: 'help',
-          title: 'Βοήθεια',
-          subtitle: 'Οδηγίες χρήσης',
-          icon: '❓',
-          type: 'navigation',
-          onPress: () => router.push('/help'),
-        },
-        {
-          id: 'contact',
-          title: 'Επικοινωνία',
-          subtitle: 'Επικοινωνία με την υποστήριξη',
-          icon: '📞',
-          type: 'navigation',
-          onPress: () => router.push('/contact'),
-        },
-        {
-          id: 'about',
-          title: 'Σχετικά',
-          subtitle: 'Έκδοση και πληροφορίες',
-          icon: 'ℹ️',
-          type: 'navigation',
-          onPress: () => router.push('/about'),
-        },
-      ],
-    },
-  ];
+      },
+    ]);
+  };
 
-  function handleBackup() {
-    Alert.alert(
-      'Αντίγραφο Ασφαλείας',
-      'Θέλετε να δημιουργήσετε αντίγραφο ασφαλείας των δεδομένων σας;',
-      [
-        { text: 'Ακύρωση', style: 'cancel' },
-        {
-          text: 'Δημιουργία',
-          onPress: () => {
-            // TODO: Implement backup functionality
-            Alert.alert('Επιτυχία', 'Το αντίγραφο ασφαλείας δημιουργήθηκε επιτυχώς');
-          },
-        },
-      ]
-    );
-  }
-
-  function handleExport() {
-    Alert.alert(
-      'Εξαγωγή Δεδομένων',
-      'Θέλετε να εξάγετε τα συμβόλαια σε αρχείο CSV;',
-      [
-        { text: 'Ακύρωση', style: 'cancel' },
-        {
-          text: 'Εξαγωγή',
-          onPress: () => {
-            // TODO: Implement export functionality
-            Alert.alert('Επιτυχία', 'Τα δεδομένα εξήχθησαν επιτυχώς');
-          },
-        },
-      ]
-    );
-  }
-
-  function handleClearData() {
-    Alert.alert(
-      'Εκκαθάριση Δεδομένων',
-      'Είστε σίγουροι ότι θέλετε να διαγράψετε όλα τα τοπικά δεδομένα; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.',
-      [
-        { text: 'Ακύρωση', style: 'cancel' },
-        {
-          text: 'Διαγραφή',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: Implement clear data functionality
-            Alert.alert('Επιτυχία', 'Τα δεδομένα διαγράφηκαν επιτυχώς');
-          },
-        },
-      ]
-    );
-  }
-
-  function renderSettingsItem(item: SettingsItem) {
-    return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.settingsItem}
-        onPress={item.onPress}
-        activeOpacity={item.type === 'toggle' ? 1 : 0.7}
-      >
-        <View style={styles.itemLeft}>
-          <Text style={styles.itemIcon}>{item.icon}</Text>
-          <View style={styles.itemContent}>
-            <Text style={styles.itemTitle}>{item.title}</Text>
-            {item.subtitle && (
-              <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-            )}
-          </View>
-        </View>
-        
-        <View style={styles.itemRight}>
-          {item.type === 'toggle' ? (
-            <Switch
-              value={item.value}
-              onValueChange={item.onToggle}
-              trackColor={{ false: Colors.border, true: Colors.primary }}
-              thumbColor={item.value ? '#FFFFFF' : Colors.textSecondary}
-            />
-          ) : (
-            <Text style={styles.chevron}>›</Text>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  function renderSettingsSection(section: SettingsSection) {
-    return (
-      <View key={section.id} style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>{section.title}</Text>
-        <View style={styles.sectionContent}>
-          {section.items.map(renderSettingsItem)}
-        </View>
+  const SettingItem = ({ icon, label, onPress, showArrow = true, value, onValueChange }: any) => (
+    <TouchableOpacity style={s.item} onPress={onValueChange ? undefined : onPress} disabled={!!onValueChange}>
+      <View style={s.itemLeft}>
+        <Ionicons name={icon} size={20} color={Colors.primary} />
+        <Text style={s.itemLabel}>{label}</Text>
       </View>
-    );
-  }
+      {onValueChange ? (
+        <Switch value={value} onValueChange={onValueChange} trackColor={{ true: Colors.primary }} />
+      ) : showArrow ? (
+        <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+      ) : null}
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Ρυθμίσεις" showActions={false} />
-      
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* User Info Card */}
-        <View style={styles.userCard}>
-          <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>👤</Text>
+    <SafeAreaView style={s.container} edges={['top']}>
+      <AppHeader title="Ρυθμίσεις" showBack={true} showActions={true} />
+
+      <View style={s.breadcrumb}>
+        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
+          <Ionicons name="home" size={14} color={Colors.primary} />
+          <Text style={s.breadcrumbText}>Αρχική</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <Text style={s.breadcrumbCurrent}>Ρυθμίσεις</Text>
+      </View>
+
+      <ScrollView style={s.content} {...smoothScrollConfig}>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Λογαριασμός</Text>
+          <View style={s.card}>
+            <SettingItem icon="person" label="Προφίλ" onPress={() => router.push('/profile')} />
+            <SettingItem icon="shield-checkmark" label="Ασφάλεια" onPress={() => Alert.alert('Σύντομα', 'Η λειτουργία θα είναι διαθέσιμη σύντομα')} />
+            <SettingItem icon="receipt" label="Ρυθμίσεις AADE" onPress={() => router.push('/aade-settings')} />
           </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>Χρήστης</Text>
-            <Text style={styles.userEmail}>user@example.com</Text>
-          </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Επεξεργασία</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Settings Sections */}
-        {settingsSections.map(renderSettingsSection)}
-
-        {/* Sign Out Button */}
-        <View style={styles.signOutSection}>
-          <TouchableOpacity
-            style={styles.signOutButton}
-            onPress={() => {
-              Alert.alert(
-                'Αποσύνδεση',
-                'Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;',
-                [
-                  { text: 'Ακύρωση', style: 'cancel' },
-                  {
-                    text: 'Αποσύνδεση',
-                    style: 'destructive',
-                    onPress: () => {
-                      // TODO: Implement sign out functionality
-                      router.push('/auth/sign-in');
-                    },
-                  },
-                ]
-              );
-            }}
-          >
-            <Text style={styles.signOutText}>Αποσύνδεση</Text>
-          </TouchableOpacity>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Ειδοποιήσεις</Text>
+          <View style={s.card}>
+            <SettingItem icon="notifications" label="Ειδοποιήσεις" value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+            <SettingItem icon="mail" label="Email Ειδοποιήσεις" value={true} onValueChange={() => {}} />
+          </View>
         </View>
+
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Ασφάλεια</Text>
+          <View style={s.card}>
+            <SettingItem icon="finger-print" label="Biometric Login" value={biometricsEnabled} onValueChange={setBiometricsEnabled} />
+            <SettingItem icon="key" label="Αλλαγή Κωδικού" onPress={() => router.push('/auth/reset-password')} />
+          </View>
+        </View>
+
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Γενικά</Text>
+          <View style={s.card}>
+            <SettingItem icon="information-circle" label="Πληροφορίες" onPress={() => Alert.alert('Εφαρμογή', 'Έκδοση 1.0.0')} />
+            <SettingItem icon="document-text" label="Όροι Χρήσης" onPress={() => Alert.alert('Όροι Χρήσης', 'Σύντομα διαθέσιμο')} />
+            <SettingItem icon="lock-closed" label="Πολιτική Απορρήτου" onPress={() => Alert.alert('Πολιτική', 'Σύντομα διαθέσιμο')} />
+          </View>
+        </View>
+
+        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+          <Ionicons name="log-out" size={20} color={Colors.error} />
+          <Text style={s.signOutText}>Αποσύνδεση</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <BottomTabBar />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    margin: Spacing.md,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.md,
-  },
-  userAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  userAvatarText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    ...Typography.h3,
-    color: Colors.text,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  userEmail: {
-    ...Typography.bodyMedium,
-    color: Colors.textSecondary,
-  },
-  editButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-  },
-  editButtonText: {
-    ...Typography.bodySmall,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  settingsSection: {
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    ...Typography.h4,
-    color: Colors.text,
-    fontWeight: '600',
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  sectionContent: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.sm,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  itemIcon: {
-    fontSize: 20,
-    marginRight: Spacing.md,
-    width: 24,
-    textAlign: 'center',
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemTitle: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  itemSubtitle: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  itemRight: {
-    marginLeft: Spacing.sm,
-  },
-  chevron: {
-    fontSize: 18,
-    color: Colors.textSecondary,
-    fontWeight: 'bold',
-  },
-  signOutSection: {
-    margin: Spacing.md,
-    marginBottom: Spacing.xl,
-  },
-  signOutButton: {
-    backgroundColor: Colors.error,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    ...Shadows.sm,
-  },
-  signOutText: {
-    ...Typography.bodyMedium,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
+  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
+  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  content: { flex: 1, padding: 8 },
+  section: { marginBottom: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textSecondary, marginBottom: 8, marginLeft: 4, textTransform: 'uppercase' },
+  card: { backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
+  item: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  itemLabel: { fontSize: 14, color: Colors.text, fontWeight: '500' },
+  signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.error + '10', padding: 14, borderRadius: 12, marginVertical: 16 },
+  signOutText: { fontSize: 14, fontWeight: '700', color: Colors.error },
 });

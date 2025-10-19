@@ -10,12 +10,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { ContextAwareFab } from '../components/context-aware-fab';
+import { SimpleGlassCard } from '../components/glass-card';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { Contract } from '../models/contract.interface';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
 
 interface CalendarEvent {
   id: string;
@@ -54,7 +57,7 @@ export default function CalendarScreen() {
           type: 'pickup',
           contractId: contract.id,
           description: `${contract.carInfo.makeModel} • ${contract.carInfo.licensePlate}`,
-          isCompleted: contract.status === 'completed' || contract.status === 'cancelled',
+          isCompleted: contract.status === 'completed',
         });
 
         // Dropoff event
@@ -65,7 +68,7 @@ export default function CalendarScreen() {
           type: 'dropoff',
           contractId: contract.id,
           description: `${contract.carInfo.makeModel} • ${contract.carInfo.licensePlate}`,
-          isCompleted: contract.status === 'completed' || contract.status === 'cancelled',
+          isCompleted: contract.status === 'completed',
         });
       });
 
@@ -137,7 +140,7 @@ export default function CalendarScreen() {
     return (
       <TouchableOpacity
         key={event.id}
-        style={[styles.eventItem, Glassmorphism.light]}
+        style={[styles.eventItem, Glass.regular]}
         onPress={() => {
           if (event.contractId) {
             router.push(`/contract-details?contractId=${event.contractId}`);
@@ -161,9 +164,9 @@ export default function CalendarScreen() {
         
         <View style={styles.eventRight}>
           {event.isCompleted ? (
-            <Text style={styles.completedText}>✅</Text>
+            <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
           ) : (
-            <Text style={styles.pendingText}>⏰</Text>
+            <Ionicons name="time" size={24} color={Colors.warning} />
           )}
         </View>
       </TouchableOpacity>
@@ -173,7 +176,7 @@ export default function CalendarScreen() {
   function renderEmptyState() {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📅</Text>
+        <Ionicons name="calendar-outline" size={64} color={Colors.textSecondary} />
         <Text style={styles.emptyTitle}>Δεν υπάρχουν γεγονότα</Text>
         <Text style={styles.emptySubtitle}>
           Δημιουργήστε συμβόλαια για να εμφανιστούν στο ημερολόγιο
@@ -189,10 +192,20 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Ημερολόγιο" showActions={true} />
       
+      {/* Breadcrumb */}
+      <View style={styles.breadcrumb}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
+          <Ionicons name="home" size={14} color={Colors.primary} />
+          <Text style={styles.breadcrumbText}>Αρχική</Text>
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
+        <Text style={styles.breadcrumbCurrent}>Ημερολόγιο</Text>
+      </View>
+      
       <ScrollView 
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        {...smoothScrollConfig}
       >
         {/* Today's Events */}
         {todayEvents.length > 0 && (
@@ -248,7 +261,32 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // Already iOS color
+  },
+  breadcrumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    gap: 6,
+  },
+  breadcrumbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  breadcrumbText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  breadcrumbCurrent: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   scrollContainer: {
     flex: 1,
@@ -260,7 +298,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    ...Typography.h4,
+    ...Typography.headline,
     color: Colors.text,
     fontWeight: '600',
     marginHorizontal: Spacing.md,
@@ -299,18 +337,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventTitle: {
-    ...Typography.bodyMedium,
+    ...Typography.body,
     color: Colors.text,
     fontWeight: '600',
     marginBottom: 2,
   },
   eventDescription: {
-    ...Typography.bodySmall,
+    ...Typography.footnote,
     color: Colors.textSecondary,
     marginBottom: 2,
   },
   eventTime: {
-    ...Typography.caption,
+    ...Typography.caption1,
     color: Colors.textSecondary,
   },
   eventRight: {
@@ -332,13 +370,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   emptyTitle: {
-    ...Typography.h3,
+    ...Typography.title3,
     color: Colors.text,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
-    ...Typography.bodyMedium,
+    ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: Spacing.lg,

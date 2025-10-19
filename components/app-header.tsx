@@ -1,17 +1,10 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, Image } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthService } from '../services/auth.service';
-import { Colors, Typography, Spacing, Shadows, BorderRadius } from '../utils/design-system';
+import { Colors, Typography, Spacing, Glass, BorderRadius, BlurIntensity } from '../utils/design-system';
 
 interface AppHeaderProps {
   showBack?: boolean;
@@ -20,458 +13,323 @@ interface AppHeaderProps {
   onBackPress?: () => void;
 }
 
-export function AppHeader({ 
-  showBack = false, 
-  title, 
-  showActions = true,
-  onBackPress 
-}: AppHeaderProps) {
+interface UserInfo {
+  name: string;
+  email: string;
+  avatarLetter: string;
+}
+
+export function AppHeader({ showBack = false, title, showActions = true, onBackPress }: AppHeaderProps) {
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    name: 'User',
+    email: 'user@example.com',
+    avatarLetter: 'U',
+  });
 
-  async function handleSignOut() {
-    await AuthService.signOut();
-    router.replace('/auth/sign-in');
-  }
+  useEffect(() => {
+    loadUserInfo();
+  }, []);
 
-  function handleBackPress() {
-    if (onBackPress) {
-      onBackPress();
-    } else {
-      router.back();
+  async function loadUserInfo() {
+    try {
+      const user = await AuthService.getCurrentUser();
+      if (user) {
+        const profile = await AuthService.getUserProfile(user.id);
+        if (profile) {
+          setUserInfo({
+            name: profile.name || 'User',
+            email: user.email || 'user@example.com',
+            avatarLetter: (profile.name || 'U').charAt(0).toUpperCase(),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user info:', error);
     }
   }
 
+  async function handleSignOut() {
+    Alert.alert('Αποσύνδεση', 'Είστε σίγουροι;', [
+      { text: 'Ακύρωση', style: 'cancel' },
+      {
+        text: 'Αποσύνδεση',
+        style: 'destructive',
+        onPress: async () => {
+          await AuthService.signOut();
+          setShowUserMenu(false);
+          router.replace('/auth/sign-in');
+        },
+      },
+    ]);
+  }
+
+  const menuItems = [
+    { icon: 'person', label: 'Προφίλ', route: '/profile' },
+    { icon: 'settings', label: 'Ρυθμίσεις', route: '/settings' },
+    { icon: 'stats-chart', label: 'Αναλυτικά', route: '/analytics' },
+    { icon: 'receipt', label: 'AADE', route: '/aade-settings' },
+    { icon: 'people', label: 'Χρήστες', route: '/user-management' },
+  ];
+
   return (
     <>
-      <View style={styles.header}>
-        {/* Left: Back or Logo */}
-        {showBack ? (
-          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => router.push('/')} style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View style={styles.brandInfo}>
-              <Text style={styles.brandName}>AGGELOS</Text>
-              <Text style={styles.brandSubtitle}>RENTALS</Text>
+      <BlurView intensity={BlurIntensity.regular} tint="light" style={styles.container}>
+        <View style={styles.content}>
+          {/* Left */}
+          {showBack ? (
+            <TouchableOpacity onPress={onBackPress || (() => router.back())} style={styles.iconButton} activeOpacity={0.6}>
+              <Ionicons name="chevron-back" size={28} color={Colors.primary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/')} style={styles.logoContainer} activeOpacity={0.6}>
+              <Image
+                source={require('../assets/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          )}
+
+          {/* Center */}
+          {title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
+
+          {/* Right */}
+          {showActions && (
+            <View style={styles.rightActions}>
+              <TouchableOpacity onPress={() => router.push('/calendar')} style={styles.actionIcon} activeOpacity={0.6}>
+                <Ionicons name="calendar-outline" size={22} color={Colors.text} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.actionIcon} activeOpacity={0.6}>
+                <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+                {/* TODO: Add badge for unread notifications count */}
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => setShowUserMenu(true)} style={styles.avatar} activeOpacity={0.6}>
+                <Text style={styles.avatarText}>{userInfo.avatarLetter}</Text>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Center: Title */}
-        {title && <Text style={styles.headerTitle}>{title}</Text>}
-
-        {/* Right: Actions */}
-        {showActions && (
-          <View style={styles.headerActions}>
-            {/* Notifications */}
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => setShowNotifications(true)}
-            >
-              <Text style={styles.icon}>🔔</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* User Menu */}
-            <TouchableOpacity 
-              style={styles.userButton}
-              onPress={() => setShowUserMenu(true)}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+          )}
+        </View>
+      </BlurView>
 
       {/* User Menu Modal */}
-      <Modal
-        visible={showUserMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowUserMenu(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowUserMenu(false)}>
-          <View style={styles.userMenu}>
-            <View style={styles.userMenuHeader}>
-              <View style={styles.userInfo}>
-                <View style={styles.userAvatar}>
-                  <Text style={styles.userAvatarText}>A</Text>
+      <Modal visible={showUserMenu} transparent animationType="fade" onRequestClose={() => setShowUserMenu(false)}>
+        <Pressable style={styles.overlay} onPress={() => setShowUserMenu(false)}>
+          <BlurView intensity={BlurIntensity.strong} tint="dark" style={styles.overlayBlur}>
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <View style={styles.menu}>
+                {/* Header */}
+                <View style={styles.menuHeader}>
+                  <View style={styles.menuAvatar}>
+                    <Text style={styles.menuAvatarText}>{userInfo.avatarLetter}</Text>
+                  </View>
+                  <View style={styles.menuUserInfo}>
+                    <Text style={styles.menuUserName}>{userInfo.name}</Text>
+                    <Text style={styles.menuUserEmail}>{userInfo.email}</Text>
+                  </View>
                 </View>
-                <View>
-                  <Text style={styles.userName}>Admin User</Text>
-                  <Text style={styles.userEmail}>admin@aggelos.com</Text>
+
+                {/* Menu Items */}
+                <View style={styles.menuItems}>
+                  {menuItems.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.menuItem, idx < menuItems.length - 1 && styles.menuItemBorder]}
+                      onPress={() => {
+                        setShowUserMenu(false);
+                        router.push(item.route);
+                      }}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <View style={styles.menuItemIconContainer}>
+                          <Ionicons name={item.icon as any} size={20} color={Colors.primary} />
+                        </View>
+                        <Text style={styles.menuItemText}>{item.label}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={Colors.systemGray3} />
+                    </TouchableOpacity>
+                  ))}
                 </View>
+
+                {/* Sign Out */}
+                <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.6}>
+                  <Ionicons name="log-out" size={20} color={Colors.systemRed} />
+                  <Text style={styles.signOutText}>Αποσύνδεση</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-
-            <View style={styles.menuDivider} />
-
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => {
-                setShowUserMenu(false);
-                router.push('/user-management');
-              }}
-            >
-              <Text style={styles.menuIcon}>👤</Text>
-              <Text style={styles.menuText}>Διαχείριση Χρηστών</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => {
-                setShowUserMenu(false);
-                // TODO: Navigate to settings
-              }}
-            >
-              <Text style={styles.menuIcon}>⚙️</Text>
-              <Text style={styles.menuText}>Ρυθμίσεις</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => {
-                setShowUserMenu(false);
-                // TODO: Navigate to reports
-              }}
-            >
-              <Text style={styles.menuIcon}>📊</Text>
-              <Text style={styles.menuText}>Αναφορές</Text>
-            </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            <TouchableOpacity 
-              style={[styles.menuItem, styles.dangerItem]}
-              onPress={() => {
-                setShowUserMenu(false);
-                handleSignOut();
-              }}
-            >
-              <Text style={styles.menuIcon}>🚪</Text>
-              <Text style={[styles.menuText, styles.dangerText]}>Αποσύνδεση</Text>
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          </BlurView>
         </Pressable>
-      </Modal>
-
-      {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View style={styles.notificationsModal}>
-          <View style={styles.notificationsHeader}>
-            <Text style={styles.notificationsTitle}>Ειδοποιήσεις</Text>
-            <TouchableOpacity onPress={() => setShowNotifications(false)}>
-              <Text style={styles.closeButton}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.notificationsList}>
-            {/* Notification Items */}
-            <View style={styles.notificationItem}>
-              <View style={[styles.notificationIcon, { backgroundColor: Colors.warning }]}>
-                <Text style={styles.notificationEmoji}>⚠️</Text>
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>Επιστροφή Σήμερα</Text>
-                <Text style={styles.notificationText}>
-                  Toyota Corolla (ΑΒΓ-1234) επιστρέφεται σε 2 ώρες
-                </Text>
-                <Text style={styles.notificationTime}>πριν από 30 λεπτά</Text>
-              </View>
-            </View>
-
-            <View style={styles.notificationItem}>
-              <View style={[styles.notificationIcon, { backgroundColor: Colors.fuelLow }]}>
-                <Text style={styles.notificationEmoji}>⛽</Text>
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>Χαμηλή Στάθμη Καυσίμου</Text>
-                <Text style={styles.notificationText}>
-                  Mercedes E200 επιστράφηκε με 2/8 καύσιμα
-                </Text>
-                <Text style={styles.notificationTime}>πριν από 1 ώρα</Text>
-              </View>
-            </View>
-
-            <View style={styles.notificationItem}>
-              <View style={[styles.notificationIcon, { backgroundColor: Colors.error }]}>
-                <Text style={styles.notificationEmoji}>💰</Text>
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>Πληρωμή Εκκρεμεί</Text>
-                <Text style={styles.notificationText}>
-                  Συμβόλαιο #1234 - €250 εκκρεμεί
-                </Text>
-                <Text style={styles.notificationTime}>πριν από 2 ώρες</Text>
-              </View>
-            </View>
-
-            <View style={styles.notificationItem}>
-              <View style={[styles.notificationIcon, { backgroundColor: Colors.success }]}>
-                <Text style={styles.notificationEmoji}>✅</Text>
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>Επιτυχής Επιστροφή</Text>
-                <Text style={styles.notificationText}>
-                  BMW X5 επιστράφηκε επιτυχώς
-                </Text>
-                <Text style={styles.notificationTime}>πριν από 3 ώρες</Text>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
       </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  container: {
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    ...Shadows.sm,
+    height: 44,
   },
-  backButton: {
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: Colors.primary,
-    fontWeight: 'bold',
+  iconButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
   },
   logoContainer: {
-    flexDirection: 'row',
+    height: 44,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: Spacing.sm,
+    justifyContent: 'center',
   },
   logo: {
-    width: 40,
-    height: 40,
+    height: 36,
+    width: 120,
   },
-  brandInfo: {
-    alignItems: 'flex-start',
-  },
-  brandName: {
-    ...Typography.h4,
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-  brandSubtitle: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-    letterSpacing: 1,
-  },
-  headerTitle: {
-    ...Typography.h3,
+  title: {
+    ...Typography.headline,
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
+    marginHorizontal: 8,
   },
-  headerActions: {
+  rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 12,
   },
-  iconButton: {
-    position: 'relative',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  icon: {
-    fontSize: 22,
-  },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: Colors.error,
-    borderRadius: BorderRadius.full,
-    minWidth: 18,
-    height: 18,
+  actionIcon: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: Colors.textInverse,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  userButton: {
-    padding: 2,
+    borderRadius: 18,
   },
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: BorderRadius.full,
+    borderRadius: 18,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
+    ...Typography.subheadline,
     color: Colors.textInverse,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
-  modalOverlay: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 60,
-    paddingRight: Spacing.md,
   },
-  userMenu: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    minWidth: 250,
-    ...Shadows.lg,
+  overlayBlur: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  userMenuHeader: {
-    padding: Spacing.md,
+  menu: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Glass.thick,
   },
-  userInfo: {
+  menuHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    padding: 20,
+    backgroundColor: 'rgba(242, 242, 247, 0.8)',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.separator,
   },
-  userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
+  menuAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  userAvatarText: {
+  menuAvatarText: {
+    fontSize: 22,
     color: Colors.textInverse,
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
-  userName: {
-    ...Typography.bodySmall,
-    fontWeight: '600',
+  menuUserInfo: {
+    flex: 1,
+  },
+  menuUserName: {
+    ...Typography.headline,
     color: Colors.text,
+    marginBottom: 2,
   },
-  userEmail: {
-    ...Typography.caption,
+  menuUserEmail: {
+    ...Typography.footnote,
     color: Colors.textSecondary,
   },
-  menuDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: Spacing.xs,
+  menuItems: {
+    padding: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  menuIcon: {
-    fontSize: 20,
-    width: 24,
-    textAlign: 'center',
-  },
-  menuText: {
-    ...Typography.bodySmall,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  dangerItem: {
-    backgroundColor: '#fef2f2',
-  },
-  dangerText: {
-    color: Colors.error,
-  },
-  notificationsModal: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    marginTop: 100,
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    ...Shadows.xl,
-  },
-  notificationsHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  menuItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.separator,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  notificationsTitle: {
-    ...Typography.h3,
-    color: Colors.text,
-  },
-  closeButton: {
-    fontSize: 24,
-    color: Colors.textSecondary,
-    padding: Spacing.sm,
-  },
-  notificationsList: {
     flex: 1,
   },
-  notificationItem: {
-    flexDirection: 'row',
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    gap: Spacing.sm,
-  },
-  notificationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
+  menuItemIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.primary + '10',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  notificationEmoji: {
-    fontSize: 20,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationTitle: {
-    ...Typography.bodySmall,
-    fontWeight: '600',
+  menuItemText: {
+    ...Typography.body,
     color: Colors.text,
-    marginBottom: 4,
   },
-  notificationText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: 4,
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.systemRed + '10',
+    gap: 8,
   },
-  notificationTime: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontSize: 11,
+  signOutText: {
+    ...Typography.body,
+    color: Colors.systemRed,
+    fontWeight: '600',
   },
 });

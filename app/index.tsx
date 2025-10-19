@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   RefreshControl,
   Alert,
@@ -13,121 +12,87 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Contract, User } from '../models/contract.interface';
+import { Ionicons } from '@expo/vector-icons';
+import { Contract } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { supabase } from '../utils/supabase';
 import { AppHeader } from '../components/app-header';
-import { DashboardAnalytics } from '../components/dashboard-analytics';
-import { AdvancedSearch } from '../components/advanced-search';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { ContextAwareFab } from '../components/context-aware-fab';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { SimpleGlassCard } from '../components/glass-card';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
+import { smoothScrollConfig } from '../utils/animations';
+import { getAADEStatusMessage } from '../utils/aade-contract-helper';
 
 const { width } = Dimensions.get('window');
 
-/**
- * Home screen showing list of contracts
- */
+interface DashboardStats {
+  totalContracts: number;
+  activeContracts: number;
+  completedContracts: number;
+  upcomingContracts: number;
+  totalRevenue: number;
+  revenueThisMonth: number;
+  avgRentalDays: number;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [sortBy, setSortBy] = useState<'pickupDate' | 'totalCost' | 'renterName'>('pickupDate');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('default-user');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    status: 'all' as 'all' | 'active' | 'completed' | 'upcoming',
-    dateRange: 'all' as 'all' | 'today' | 'week' | 'month',
-    priceRange: 'all' as 'all' | 'low' | 'medium' | 'high',
-    fuelLevel: 'all' as 'all' | 'high' | 'medium' | 'low',
-  });
-  const [analytics, setAnalytics] = useState({
-    totalRevenue: 0,
-    activeRentals: 0,
-    upcomingReturns: 0,
-    revenueThisMonth: 0,
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'upcoming'>('all');
+  const [stats, setStats] = useState<DashboardStats>({
     totalContracts: 0,
-    averageRentalDuration: 0,
+    activeContracts: 0,
+    completedContracts: 0,
+    upcomingContracts: 0,
+    totalRevenue: 0,
+    revenueThisMonth: 0,
+    avgRentalDays: 0,
   });
 
   useEffect(() => {
     loadContracts();
-    loadUsers();
   }, []);
 
   useEffect(() => {
-    if (contracts.length > 0) {
-      const sorted = sortContracts(contracts, sortBy, sortOrder);
-      setContracts(sorted);
-      calculateAnalytics(sorted);
-    }
-  }, [sortBy, sortOrder]);
-
-  useEffect(() => {
     filterContracts();
-  }, [contracts, searchQuery, filters]);
-
-  async function loadUsers() {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('name', { ascending: true });
-      
-      if (error) throw error;
-      
-      const loadedUsers: User[] = data?.map(u => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        address: u.address,
-        signature: u.signature_url || '',
-        signatureUrl: u.signature_url,
-        createdAt: new Date(u.created_at),
-        updatedAt: u.updated_at ? new Date(u.updated_at) : undefined,
-      })) || [];
-      
-      setUsers(loadedUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  }
+  }, [contracts, searchQuery, activeFilter]);
 
   async function loadContracts() {
     try {
       const loadedContracts = await SupabaseContractService.getAllContracts();
-      const sorted = sortContracts(loadedContracts, sortBy, sortOrder);
-      setContracts(sorted);
-      calculateAnalytics(sorted);
+      
+      // Add example AADE status to first two contracts for demonstration
+      const contractsWithAADE = loadedContracts.map((contract, index) => {
+        if (index === 0) {
+          return { ...contract, aadeStatus: 'submitted' as const, aadeDclId: 123456 };
+        } else if (index === 1) {
+          return { ...contract, aadeStatus: 'completed' as const, aadeDclId: 789012 };
+        }
+        return contract;
+      });
+      
+      setContracts(contractsWithAADE);
+      calculateStats(contractsWithAADE);
     } catch (error) {
       console.error('Error loading contracts:', error);
       Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης συμβολαίων');
     }
   }
 
-  function calculateAnalytics(contracts: Contract[]) {
+  function calculateStats(contracts: Contract[]) {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
-    
+
+    const active = contracts.filter(c => c.status === 'active').length;
+    const completed = contracts.filter(c => c.status === 'completed').length;
+    const upcoming = contracts.filter(c => c.status === 'upcoming').length;
+
     const totalRevenue = contracts.reduce((sum, c) => sum + (c.rentalPeriod.totalCost || 0), 0);
-    
-    const activeRentals = contracts.filter(c => {
-      const pickup = new Date(c.rentalPeriod.pickupDate);
-      const dropoff = new Date(c.rentalPeriod.dropoffDate);
-      return pickup <= now && now <= dropoff;
-    }).length;
-    
-    const upcomingReturns = contracts.filter(c => {
-      const dropoff = new Date(c.rentalPeriod.dropoffDate);
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      return dropoff >= now && dropoff <= tomorrow;
-    }).length;
     
     const revenueThisMonth = contracts
       .filter(c => {
@@ -135,172 +100,48 @@ export default function HomeScreen() {
         return pickup.getMonth() === thisMonth && pickup.getFullYear() === thisYear;
       })
       .reduce((sum, c) => sum + (c.rentalPeriod.totalCost || 0), 0);
-    
-    const totalContracts = contracts.length;
-    
-    const averageRentalDuration = activeRentals > 0 
-      ? contracts
-          .filter(c => {
-            const pickup = new Date(c.rentalPeriod.pickupDate);
-            const dropoff = new Date(c.rentalPeriod.dropoffDate);
-            return pickup <= now && now <= dropoff;
-          })
-          .reduce((sum, c) => {
-            const pickup = new Date(c.rentalPeriod.pickupDate);
-            const dropoff = new Date(c.rentalPeriod.dropoffDate);
-            return sum + Math.ceil((dropoff.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
-          }, 0) / activeRentals
+
+    const activeContracts = contracts.filter(c => c.status === 'active');
+    const avgRentalDays = activeContracts.length > 0
+      ? activeContracts.reduce((sum, c) => {
+          const pickup = new Date(c.rentalPeriod.pickupDate);
+          const dropoff = new Date(c.rentalPeriod.dropoffDate);
+          return sum + Math.ceil((dropoff.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+        }, 0) / activeContracts.length
       : 0;
-    
-    setAnalytics({ 
-      totalRevenue, 
-      activeRentals, 
-      upcomingReturns, 
-      revenueThisMonth, 
-      totalContracts,
-      averageRentalDuration: Math.round(averageRentalDuration)
+
+    setStats({
+      totalContracts: contracts.length,
+      activeContracts: active,
+      completedContracts: completed,
+      upcomingContracts: upcoming,
+      totalRevenue,
+      revenueThisMonth,
+      avgRentalDays: Math.round(avgRentalDays),
     });
   }
 
   function filterContracts() {
     let filtered = contracts;
 
-    // Text search
+    // Filter by status
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(c => c.status === activeFilter);
+    }
+
+    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(contract => {
         return (
           contract.renterInfo.fullName.toLowerCase().includes(query) ||
           contract.carInfo.licensePlate.toLowerCase().includes(query) ||
-          contract.carInfo.make?.toLowerCase().includes(query) ||
-          contract.carInfo.model?.toLowerCase().includes(query) ||
           contract.carInfo.makeModel?.toLowerCase().includes(query)
         );
       });
     }
 
-    // Status filter
-    if (filters.status !== 'all') {
-      const now = new Date();
-      filtered = filtered.filter(contract => {
-        const pickup = new Date(contract.rentalPeriod.pickupDate);
-        const dropoff = new Date(contract.rentalPeriod.dropoffDate);
-        
-        switch (filters.status) {
-          case 'active':
-            return pickup <= now && now <= dropoff;
-          case 'completed':
-            return dropoff < now;
-          case 'upcoming':
-            return pickup > now;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Date range filter
-    if (filters.dateRange !== 'all') {
-      const now = new Date();
-      filtered = filtered.filter(contract => {
-        const pickup = new Date(contract.rentalPeriod.pickupDate);
-        
-        switch (filters.dateRange) {
-          case 'today':
-            return pickup.toDateString() === now.toDateString();
-          case 'week':
-            const weekAgo = new Date(now);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return pickup >= weekAgo;
-          case 'month':
-            const monthAgo = new Date(now);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return pickup >= monthAgo;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Price range filter
-    if (filters.priceRange !== 'all') {
-      filtered = filtered.filter(contract => {
-        const cost = contract.rentalPeriod.totalCost || 0;
-        
-        switch (filters.priceRange) {
-          case 'low':
-            return cost <= 50;
-          case 'medium':
-            return cost > 50 && cost <= 150;
-          case 'high':
-            return cost > 150;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Fuel level filter
-    if (filters.fuelLevel !== 'all') {
-      filtered = filtered.filter(contract => {
-        const fuelLevel = contract.carCondition?.fuelLevel || 8;
-        
-        switch (filters.fuelLevel) {
-          case 'high':
-            return fuelLevel >= 6;
-          case 'medium':
-            return fuelLevel >= 3 && fuelLevel < 6;
-          case 'low':
-            return fuelLevel < 3;
-          default:
-            return true;
-        }
-      });
-    }
-    
     setFilteredContracts(filtered);
-  }
-
-  function clearFilters() {
-    setFilters({
-      status: 'all',
-      dateRange: 'all',
-      priceRange: 'all',
-      fuelLevel: 'all',
-    });
-  }
-
-  function sortContracts(contracts: Contract[], sortBy: string, sortOrder: string): Contract[] {
-    return contracts.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
-        case 'pickupDate':
-          const dateA = new Date(a.rentalPeriod.pickupDate).getTime();
-          const dateB = new Date(b.rentalPeriod.pickupDate).getTime();
-          comparison = dateA - dateB;
-          break;
-        case 'totalCost':
-          comparison = (a.rentalPeriod.totalCost || 0) - (b.rentalPeriod.totalCost || 0);
-          break;
-        case 'renterName':
-          comparison = a.renterInfo.fullName.localeCompare(b.renterInfo.fullName);
-          break;
-        default:
-          comparison = 0;
-      }
-      
-      return sortOrder === 'desc' ? -comparison : comparison;
-    });
-  }
-
-  function handleSortChange(newSortBy: 'pickupDate' | 'totalCost' | 'renterName') {
-    if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder('asc');
-    }
   }
 
   async function onRefresh() {
@@ -309,108 +150,145 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  async function clearAllContracts() {
-    Alert.alert(
-      'Διαγραφή Όλων των Συμβολαίων',
-      'Είστε σίγουροι ότι θέλετε να διαγράψετε όλα τα συμβόλαια; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.',
-      [
-        { text: 'Ακύρωση', style: 'cancel' },
-        {
-          text: 'Διαγραφή Όλων',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Delete all contracts from Supabase
-              const { error } = await supabase
-                .from('contracts')
-                .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all (dummy condition)
-              
-              if (error) throw error;
-              
-              await loadContracts();
-              Alert.alert('Επιτυχία', 'Όλα τα συμβόλαια διαγράφηκαν επιτυχώς');
-            } catch (error) {
-              console.error('Error clearing contracts:', error);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής συμβολαίων');
-            }
-          },
-        },
-      ]
-    );
-  }
-
   function formatDate(date: Date): string {
-    const d = new Date(date);
-    return d.toLocaleDateString('el-GR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+    return new Date(date).toLocaleDateString('el-GR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
   }
 
-  function renderContractItem({ item }: { item: Contract }) {
-    const pickupDate = formatDate(item.rentalPeriod.pickupDate);
-    const dropoffDate = formatDate(item.rentalPeriod.dropoffDate);
-    
+  function getStatusColor(status: string): string {
+    switch (status) {
+      case 'active': return Colors.success;
+      case 'completed': return Colors.textSecondary;
+      case 'upcoming': return Colors.info;
+      default: return Colors.textSecondary;
+    }
+  }
+
+  function getStatusLabel(status: string): string {
+    switch (status) {
+      case 'active': return 'Ενεργό';
+      case 'completed': return 'Ολοκληρωμένο';
+      case 'upcoming': return 'Επερχόμενο';
+      default: return status;
+    }
+  }
+
+  function renderStatsCard(icon: any, label: string, value: string | number, color: string, onPress?: () => void) {
     return (
       <TouchableOpacity
-        style={styles.contractItem}
-        onPress={() => router.push(`/contract-details?contractId=${item.id}`)}
+        style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 4 }]}
+        onPress={onPress}
+        activeOpacity={onPress ? 0.7 : 1}
+        disabled={!onPress}
+      >
+        <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+          <Ionicons name={icon} size={24} color={color} />
+        </View>
+        <View style={styles.statContent}>
+          <Text style={styles.statValue}>{value}</Text>
+          <Text style={styles.statLabel}>{label}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderFilterButton(filter: typeof activeFilter, label: string, icon: any) {
+    const isActive = activeFilter === filter;
+    return (
+      <TouchableOpacity
+        style={[styles.filterButton, isActive && styles.filterButtonActive]}
+        onPress={() => setActiveFilter(filter)}
         activeOpacity={0.7}
       >
+        <Ionicons
+          name={icon}
+          size={18}
+          color={isActive ? '#FFFFFF' : Colors.textSecondary}
+        />
+        <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderContractCard(contract: Contract) {
+    return (
+      <TouchableOpacity
+        key={contract.id}
+        style={styles.contractCard}
+        onPress={() => router.push(`/contract-details?contractId=${contract.id}`)}
+        activeOpacity={0.7}
+      >
+        {/* Header */}
         <View style={styles.contractHeader}>
-          <View style={styles.contractMainInfo}>
-            <Text style={styles.contractName} numberOfLines={1}>
-              {item.renterInfo.fullName}
-            </Text>
-            <Text style={styles.contractCar} numberOfLines={1}>
-              {item.carInfo.makeModel || `${item.carInfo.make || ''} ${item.carInfo.model || ''}`.trim()} • {item.carInfo.licensePlate}
-            </Text>
-          </View>
-          <View style={styles.fuelBadge}>
-            <View style={styles.fuelBarContainer}>
-              <View style={styles.fuelBar}>
-                <View style={[
-                  styles.fuelBarFill, 
-                  { width: `${((item.carCondition?.fuelLevel || 8) / 8) * 100}%` }
-                ]} />
-              </View>
-              <Text style={styles.fuelBadgeText}>
-                {item.carCondition?.fuelLevel || 'N/A'}/8
+          <View style={styles.contractHeaderLeft}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(contract.status) }]} />
+            <View style={styles.contractHeaderInfo}>
+              <Text style={styles.contractName} numberOfLines={1}>
+                {contract.renterInfo.fullName}
+              </Text>
+              <Text style={styles.contractCar} numberOfLines={1}>
+                {contract.carInfo.makeModel} • {contract.carInfo.licensePlate}
               </Text>
             </View>
           </View>
-        </View>
-        
-        <View style={styles.contractDetails}>
-          <View style={styles.dateInfo}>
-            <Text style={styles.dateLabel}>Παραλαβή:</Text>
-            <Text style={styles.dateValue}>
-              {pickupDate} • {item.rentalPeriod.pickupTime}
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(contract.status) + '15' }]}>
+            <Text style={[styles.statusBadgeText, { color: getStatusColor(contract.status) }]}>
+              {getStatusLabel(contract.status)}
             </Text>
           </View>
-                 <View style={styles.dateInfo}>
-                   <Text style={styles.dateLabel}>Επιστροφή:</Text>
-                   <Text style={styles.dateValue}>
-                     {dropoffDate} • {item.rentalPeriod.dropoffTime}
-                   </Text>
-                 </View>
-                 <View style={styles.costInfo}>
-                   <Text style={styles.costLabel}>Κόστος:</Text>
-                   <Text style={styles.costValue}>€{item.rentalPeriod.totalCost || 0}</Text>
-                 </View>
         </View>
 
-        <View style={styles.contractFooter}>
-          <Text style={styles.locationText} numberOfLines={1}>
-            📍 {item.rentalPeriod.pickupLocation}
-          </Text>
-          {item.damagePoints.length > 0 && (
-            <Text style={styles.damageIndicator}>
-              ⚠️ {item.damagePoints.length} ζημιές
+        {/* Details */}
+        <View style={styles.contractDetails}>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.detailLabel}>Παραλαβή:</Text>
+            <Text style={styles.detailValue}>
+              {formatDate(contract.rentalPeriod.pickupDate)}
             </Text>
-          )}
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.detailLabel}>Επιστροφή:</Text>
+            <Text style={styles.detailValue}>
+              {formatDate(contract.rentalPeriod.dropoffDate)}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.detailLabel}>Τοποθεσία:</Text>
+            <Text style={styles.detailValue} numberOfLines={1}>
+              {contract.rentalPeriod.pickupLocation}
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.contractFooter}>
+          <View style={styles.priceContainer}>
+            <Ionicons name="cash-outline" size={18} color={Colors.primary} />
+            <Text style={styles.priceValue}>€{contract.rentalPeriod.totalCost || 0}</Text>
+          </View>
+          <View style={styles.footerIcons}>
+            {contract.damagePoints && contract.damagePoints.length > 0 && (
+              <View style={styles.footerIconBadge}>
+                <Ionicons name="warning" size={16} color={Colors.warning} />
+                <Text style={styles.footerIconBadgeText}>{contract.damagePoints.length}</Text>
+              </View>
+            )}
+            {(contract.aadeStatus === 'submitted' || contract.aadeStatus === 'completed') && (
+              <View style={styles.aadeBadgeHome}>
+                <Ionicons name="cloud-done" size={14} color="#28a745" />
+                <Text style={styles.aadeBadgeTextHome}>ΑΑΔΕ</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -419,11 +297,25 @@ export default function HomeScreen() {
   function renderEmptyState() {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📋</Text>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="document-text-outline" size={64} color={Colors.textSecondary} />
+        </View>
         <Text style={styles.emptyTitle}>Δεν υπάρχουν συμβόλαια</Text>
         <Text style={styles.emptySubtitle}>
-          Πατήστε το κουμπί "Νέο Συμβόλαιο" για να δημιουργήσετε το πρώτο σας
+          {activeFilter === 'all'
+            ? 'Δημιουργήστε το πρώτο σας συμβόλαιο πατώντας το κουμπί +'
+            : `Δεν υπάρχουν ${getStatusLabel(activeFilter).toLowerCase()} συμβόλαια`}
         </Text>
+        {activeFilter === 'all' && (
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={() => router.push('/new-contract')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.emptyButtonText}>Νέο Συμβόλαιο</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -431,104 +323,106 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader showActions={true} />
-      
-      {/* Search Bar - Moved to top */}
-      <View style={styles.searchContainer}>
-        <AdvancedSearch
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filters={filters}
-          onFiltersChange={setFilters}
-          onClearFilters={clearFilters}
-        />
-      </View>
 
-      <ScrollView 
-        style={styles.scrollContainer}
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        {...smoothScrollConfig}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Dashboard Analytics */}
-        <DashboardAnalytics 
-          analytics={analytics} 
-          onStatPress={(statType) => {
-            console.log('Stat pressed:', statType);
-          }}
-        />
-
-        {/* Quick Stats Cards */}
-        <View style={styles.quickStatsContainer}>
-          <View style={styles.quickStatsRow}>
-            <View style={[styles.quickStatCard, { backgroundColor: Colors.primary }]}>
-              <Text style={styles.quickStatValue}>{contracts.length}</Text>
-              <Text style={styles.quickStatLabel}>Συνολικά</Text>
-            </View>
-            <View style={[styles.quickStatCard, { backgroundColor: Colors.success }]}>
-              <Text style={styles.quickStatValue}>{contracts.filter(c => c.status === 'active').length}</Text>
-              <Text style={styles.quickStatLabel}>Ενεργά</Text>
-            </View>
-            <View style={[styles.quickStatCard, { backgroundColor: Colors.info }]}>
-              <Text style={styles.quickStatValue}>{contracts.filter(c => c.status === 'completed').length}</Text>
-              <Text style={styles.quickStatLabel}>Ολοκληρωμένα</Text>
-            </View>
+        {/* Dashboard Stats */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Επισκόπηση</Text>
+          <View style={styles.statsGrid}>
+            {renderStatsCard('documents', 'Συνολικά', stats.totalContracts, Colors.primary, () => setActiveFilter('all'))}
+            {renderStatsCard('checkmark-circle', 'Ενεργά', stats.activeContracts, Colors.success, () => setActiveFilter('active'))}
+            {renderStatsCard('time', 'Επερχόμενα', stats.upcomingContracts, Colors.info, () => setActiveFilter('upcoming'))}
+            {renderStatsCard('checkmark-done', 'Ολοκληρωμένα', stats.completedContracts, Colors.textSecondary, () => setActiveFilter('completed'))}
           </View>
-      </View>
-
-      {/* Sort Options */}
-      <View style={styles.sortContainer}>
-        <Text style={styles.sortLabel}>Ταξινόμηση:</Text>
-        <View style={styles.sortButtons}>
-          <TouchableOpacity
-            style={[styles.sortButton, sortBy === 'pickupDate' && styles.sortButtonActive]}
-            onPress={() => handleSortChange('pickupDate')}
-          >
-            <Text style={[styles.sortButtonText, sortBy === 'pickupDate' && styles.sortButtonTextActive]}>
-              Ημερομηνία {sortBy === 'pickupDate' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sortButton, sortBy === 'totalCost' && styles.sortButtonActive]}
-            onPress={() => handleSortChange('totalCost')}
-          >
-            <Text style={[styles.sortButtonText, sortBy === 'totalCost' && styles.sortButtonTextActive]}>
-              Κόστος {sortBy === 'totalCost' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sortButton, sortBy === 'renterName' && styles.sortButtonActive]}
-            onPress={() => handleSortChange('renterName')}
-          >
-            <Text style={[styles.sortButtonText, sortBy === 'renterName' && styles.sortButtonTextActive]}>
-              Όνομα {sortBy === 'renterName' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Contract List */}
-        {filteredContracts.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          <View style={styles.contractsContainer}>
-            {filteredContracts.map((contract, index) => (
-              <View key={`${contract.id}-${index}`}>
-                {renderContractItem({ item: contract })}
+        {/* Revenue Stats */}
+        <View style={styles.revenueSection}>
+          <View style={styles.revenueCard}>
+            <View style={styles.revenueCardLeft}>
+              <View style={[styles.revenueIcon, { backgroundColor: Colors.success + '15' }]}>
+                <Ionicons name="trending-up" size={28} color={Colors.success} />
               </View>
-            ))}
+              <View>
+                <Text style={styles.revenueLabel}>Συνολικά Έσοδα</Text>
+                <Text style={styles.revenueValue}>€{stats.totalRevenue.toLocaleString()}</Text>
+              </View>
+            </View>
           </View>
-        )}
+          <View style={styles.revenueCard}>
+            <View style={styles.revenueCardLeft}>
+              <View style={[styles.revenueIcon, { backgroundColor: Colors.primary + '15' }]}>
+                <Ionicons name="calendar" size={28} color={Colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.revenueLabel}>Αυτόν τον Μήνα</Text>
+                <Text style={styles.revenueValue}>€{stats.revenueThisMonth.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Αναζήτηση συμβολαίων..."
+              placeholderTextColor={Colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Filters */}
+        <View style={styles.filtersSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
+            {renderFilterButton('all', 'Όλα', 'grid-outline')}
+            {renderFilterButton('active', 'Ενεργά', 'checkmark-circle-outline')}
+            {renderFilterButton('upcoming', 'Επερχόμενα', 'time-outline')}
+            {renderFilterButton('completed', 'Ολοκληρωμένα', 'checkmark-done-outline')}
+          </ScrollView>
+        </View>
+
+        {/* Contracts List */}
+        <View style={styles.contractsSection}>
+          <View style={styles.contractsHeader}>
+            <Text style={styles.sectionTitle}>
+              Συμβόλαια ({filteredContracts.length})
+            </Text>
+          </View>
+
+          {filteredContracts.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            <View style={styles.contractsList}>
+              {filteredContracts.map(contract => renderContractCard(contract))}
+            </View>
+          )}
+        </View>
       </ScrollView>
-      
-        {/* Floating Action Button */}
-        <ContextAwareFab
-          onNewContract={() => router.push('/new-contract')}
-          onNewDamage={() => router.push('/damage-report')}
-          onNewUser={() => router.push('/user-management')}
-        />
-      
+
+      {/* Floating Action Button */}
+      <ContextAwareFab
+        onNewContract={() => router.push('/new-contract')}
+        onNewDamage={() => router.push('/damage-report')}
+        onNewUser={() => router.push('/user-management')}
+      />
+
       <BottomTabBar />
     </SafeAreaView>
   );
@@ -537,283 +431,332 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background, // iOS #F2F2F7
   },
-  scrollContainer: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Space for FAB and bottom tab
+    paddingBottom: 120,
+  },
+  // Stats Section
+  statsSection: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 6,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  statIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  statContent: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  // Revenue Section
+  revenueSection: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  revenueCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    ...Shadows.sm,
+  },
+  revenueCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  revenueIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revenueLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+    fontWeight: '500',
+  },
+  revenueValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  // Search Section
+  searchSection: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   searchContainer: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  quickStatsContainer: {
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  quickStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-  },
-  quickStatCard: {
-    flex: 1,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    ...Shadows.md,
-  },
-  quickStatValue: {
-    ...Typography.h3,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  quickStatLabel: {
-    ...Typography.caption,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    opacity: 0.9,
-  },
-  contractsContainer: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.lg,
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    gap: Spacing.sm,
-  },
-  userButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 36,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderLight,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
     flex: 1,
-    marginRight: Spacing.xs,
-    ...Shadows.sm,
-  },
-  userButtonIcon: {
-    fontSize: 16,
-    marginRight: Spacing.xs,
-  },
-  userButtonText: {
-    ...Typography.bodySmall,
+    fontSize: 13,
     color: Colors.text,
     fontWeight: '500',
-    flex: 1,
   },
-  newButton: {
+  // Filters Section
+  filtersSection: {
+    paddingBottom: 6,
+  },
+  filtersScroll: {
+    paddingHorizontal: 8,
+    gap: 6,
+  },
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    flex: 1,
-    marginLeft: Spacing.xs,
-    ...Shadows.sm,
-  },
-  newButtonIcon: {
-    fontSize: 18,
-    color: Colors.textInverse,
-    fontWeight: 'bold',
-    marginRight: Spacing.xs,
-  },
-  newButtonText: {
-    ...Typography.bodySmall,
-    color: Colors.textInverse,
-    fontWeight: '600',
-    flex: 1,
-  },
-  sortContainer: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  sortLabel: {
-    ...Typography.bodySmall,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-  },
-  sortButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.xs,
-  },
-  sortButton: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderLight,
   },
-  sortButtonActive: {
+  filterButtonActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  sortButtonText: {
-    ...Typography.caption,
-    fontWeight: '500',
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.textSecondary,
   },
-  sortButtonTextActive: {
-    color: Colors.textInverse,
-    fontWeight: '600',
+  filterButtonTextActive: {
+    color: '#FFFFFF',
   },
-  listContent: {
-    padding: Spacing.md,
+  // Contracts Section
+  contractsSection: {
+    paddingHorizontal: 8,
   },
-  listContentEmpty: {
-    flex: 1,
+  contractsHeader: {
+    marginBottom: 8,
   },
-  contractItem: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Glassmorphism.light,
+  contractsList: {
+    gap: 6,
+  },
+  // Contract Card
+  contractCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
+    ...Shadows.sm,
   },
   contractHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
-  contractMainInfo: {
+  contractHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    marginRight: Spacing.sm,
+    marginRight: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  contractHeaderInfo: {
+    flex: 1,
   },
   contractName: {
-    ...Typography.h4,
+    fontSize: 14,
+    fontWeight: '700',
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   contractCar: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     color: Colors.textSecondary,
-  },
-  fuelBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.warning,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  fuelBarContainer: {
-    alignItems: 'center',
-  },
-  fuelBar: {
-    width: 40,
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: BorderRadius.sm,
-    marginBottom: 2,
-    overflow: 'hidden',
-  },
-  fuelBarFill: {
-    height: '100%',
-    backgroundColor: Colors.textInverse,
-    borderRadius: BorderRadius.sm,
-  },
-  fuelBadgeText: {
-    color: Colors.textInverse,
-    ...Typography.caption,
-    fontWeight: 'bold',
-  },
-  contractDetails: {
-    marginBottom: Spacing.sm,
-  },
-  dateInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  dateLabel: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    width: 80,
-  },
-  dateValue: {
-    ...Typography.caption,
-    color: Colors.text,
     fontWeight: '500',
   },
-  costInfo: {
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  contractDetails: {
+    marginBottom: 8,
+    gap: 4,
+  },
+  detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: 6,
   },
-  costLabel: {
-    ...Typography.bodySmall,
-    fontWeight: '600',
+  detailLabel: {
+    fontSize: 11,
     color: Colors.textSecondary,
+    width: 70,
+    fontWeight: '500',
   },
-  costValue: {
-    ...Typography.bodySmall,
-    color: Colors.primary,
-    fontWeight: 'bold',
+  detailValue: {
+    fontSize: 11,
+    color: Colors.text,
+    fontWeight: '600',
+    flex: 1,
   },
   contractFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Spacing.sm,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
-  locationText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  damageIndicator: {
-    ...Typography.caption,
-    color: Colors.warning,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  priceContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  priceValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  footerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  footerIconBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  footerIconBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.warning,
+  },
+  aadeBadgeHome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    backgroundColor: '#28a74515',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#28a74530',
+  },
+  aadeBadgeTextHome: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#28a745',
+    letterSpacing: 0.5,
+  },
+  // Empty State
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl * 2,
     paddingHorizontal: Spacing.xl,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: Spacing.lg,
   },
   emptyTitle: {
-    ...Typography.h3,
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.text,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
-    ...Typography.bodySmall,
+    fontSize: 15,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  emptyButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -9,7 +9,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { usePathname } from 'expo-router';
-import { Colors, Typography, Spacing, Shadows, BorderRadius, Glassmorphism } from '../utils/design-system';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
 
 const { width } = Dimensions.get('window');
 
@@ -316,7 +317,7 @@ export function ContextAwareFab({
                 ]}
               >
                 <TouchableOpacity
-                  style={[styles.actionButton, Glassmorphism.light]}
+                  style={[styles.actionButton, Glass.regular]}
                   onPress={action.onPress}
                   activeOpacity={0.7}
                 >
@@ -331,7 +332,7 @@ export function ContextAwareFab({
 
       {/* Main FAB Button */}
       <TouchableOpacity
-        style={[styles.fab, Glassmorphism.primary]}
+        style={styles.fab}
         onPress={toggleExpanded}
         activeOpacity={0.8}
       >
@@ -370,6 +371,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     ...Shadows.lg,
   },
   fabIcon: {
@@ -406,7 +410,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   actionLabel: {
-    ...Typography.bodyMedium,
+    ...Typography.body,
     color: Colors.text,
     fontWeight: '600',
     flex: 1,
