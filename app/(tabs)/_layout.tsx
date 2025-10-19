@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Slot } from 'expo-router';
+import { Slot, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/app-header';
 import { BottomTabBar } from '../../components/bottom-tab-bar';
+import { ContextAwareFab } from '../../components/context-aware-fab';
 import { Colors } from '../../utils/design-system';
 
 /**
@@ -11,6 +12,8 @@ import { Colors } from '../../utils/design-system';
  * Only the content (Slot) will change when navigating, not the navbar
  */
 export default function TabsLayout() {
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* App Header - shown on all tab pages */}
@@ -19,6 +22,13 @@ export default function TabsLayout() {
       {/* Page Content - this changes when navigating */}
       <View style={styles.content}>
         <Slot />
+        
+        {/* Floating Action Button - context-aware */}
+        <ContextAwareFab
+          onNewContract={() => router.push('/new-contract')}
+          onNewDamage={() => router.push('/new-contract')} // Navigate to new contract (damage created there)
+          onNewCar={() => router.push('/cars')} // TODO: Create new car page
+        />
       </View>
       
       {/* Bottom Tab Bar - persistent across navigation */}

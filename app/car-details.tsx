@@ -85,6 +85,11 @@ export default function CarDetailsScreen() {
     setRefreshing(false);
   };
 
+  function handleEdit() {
+    // TODO: Create edit-car page or modal
+    Alert.alert('Επεξεργασία', 'Η λειτουργία επεξεργασίας αυτοκινήτου θα είναι σύντομα διαθέσιμη.');
+  }
+
   if (!car) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -160,6 +165,15 @@ export default function CarDetailsScreen() {
               <Text style={s.statLabel}>Ζημιές</Text>
             </View>
           </View>
+          
+          {/* Edit Button */}
+          <TouchableOpacity
+            style={s.editButton}
+            onPress={handleEdit}
+          >
+            <Ionicons name="create-outline" size={20} color="#fff" />
+            <Text style={s.editButtonText}>Επεξεργασία</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -190,4 +204,20 @@ const s = StyleSheet.create({
   statCard: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 12, ...Shadows.sm },
   statValue: { fontSize: 18, fontWeight: '700', marginVertical: 4 },
   statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '600' },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 12,
+    ...Shadows.md,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });

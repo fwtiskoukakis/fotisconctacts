@@ -23,6 +23,7 @@ export interface CarCondition {
   fuelLevel: number; // 1-8 scale (1/8 to 8/8)
   mileage: number; // kilometers
   insuranceType: 'basic' | 'full';
+  notes?: string; // Additional notes about vehicle condition
 }
 
 export interface CarInfo {
@@ -30,6 +31,7 @@ export interface CarInfo {
   year: number;
   licensePlate: string;
   mileage: number;
+  category?: string; // Vehicle category: car, atv, scooter, motorcycle
 }
 
 export interface DamagePoint {

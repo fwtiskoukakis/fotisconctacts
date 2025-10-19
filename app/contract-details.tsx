@@ -6,10 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
+import { PDFContractGenerator } from '../components/pdf-contract-generator';
 import { Contract, User } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { supabase } from '../utils/supabase';
-import { PDFGenerationService } from '../services/pdf-generation.service';
 import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 import { createContractWithAADE, canSubmitToAADE, getAADEStatusMessage } from '../utils/aade-contract-helper';
@@ -19,7 +19,6 @@ export default function ContractDetailsScreen() {
   const { contractId } = useLocalSearchParams();
   const [contract, setContract] = React.useState<Contract | null>(null);
   const [user, setUser] = React.useState<User | null>(null);
-  const [generating, setGenerating] = React.useState(false);
   const [submittingAADE, setSubmittingAADE] = React.useState(false);
 
   React.useEffect(() => {
@@ -56,23 +55,6 @@ export default function ContractDetailsScreen() {
         Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης');
         router.back();
       }
-    }
-  }
-
-  async function handleGeneratePDF() {
-    if (!contract || !user) {
-      Alert.alert('Σφάλμα', 'Δεν είναι δυνατή η δημιουργία PDF');
-      return;
-    }
-    setGenerating(true);
-    try {
-      const pdfUri = await PDFGenerationService.generateContractPDF(contract, user);
-      await PDFGenerationService.sharePDF(pdfUri);
-      Alert.alert('Επιτυχία', 'Το PDF δημιουργήθηκε επιτυχώς!');
-    } catch (error) {
-      Alert.alert('Σφάλμα', 'Αποτυχία δημιουργίας PDF');
-    } finally {
-      setGenerating(false);
     }
   }
 
@@ -242,11 +224,16 @@ export default function ContractDetailsScreen() {
             <Ionicons name="create" size={18} color="#fff" />
             <Text style={s.btnText}>Επεξεργασία</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.btn, s.btnSecondary]} onPress={handleGeneratePDF} disabled={generating}>
-            <Ionicons name="document-text" size={18} color="#fff" />
-            <Text style={s.btnText}>{generating ? 'Δημιουργία...' : 'PDF'}</Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Professional PDF Generator */}
+        {user && (
+          <PDFContractGenerator
+            contract={contract}
+            user={user}
+            style={{ marginHorizontal: 16, marginTop: 16 }}
+          />
+        )}
 
         {/* AADE Push Button */}
         <TouchableOpacity 

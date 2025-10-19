@@ -1,25 +1,37 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions, ScrollView } from 'react-native';
-import Svg, { Path, Circle, Rect, Ellipse, Line, G } from 'react-native-svg';
+import { View, StyleSheet, TouchableOpacity, Text, Dimensions, Image } from 'react-native';
 import { DamagePoint } from '../models/contract.interface';
 
 interface CarDiagramProps {
   onAddDamage: (x: number, y: number, view: 'front' | 'rear' | 'left' | 'right') => void;
   damagePoints: DamagePoint[];
   isEditable?: boolean;
+  onVehicleTypeChange?: (type: VehicleType) => void;
 }
 
-type CarView = 'front' | 'rear' | 'left' | 'right';
+type VehicleType = 'car' | 'scooter' | 'atv';
+
+// Import vehicle diagram images
+const vehicleImages = {
+  car: require('../assets/car_conditions.png'),
+  scooter: require('../assets/scooter-conditions.png'),
+  atv: require('../assets/atv-conditions.png'),
+};
 
 /**
- * Interactive car diagram component with 4 separate views
- * Front, Rear, Left Side, and Right Side views
+ * Interactive vehicle diagram component
+ * Choose between Car, Scooter, or ATV diagrams
  */
-export function CarDiagram({ onAddDamage, damagePoints, isEditable = true }: CarDiagramProps) {
-  const [currentView, setCurrentView] = useState<CarView>('front');
+export function CarDiagram({ onAddDamage, damagePoints, isEditable = true, onVehicleTypeChange }: CarDiagramProps) {
+  const [vehicleType, setVehicleType] = useState<VehicleType>('car');
   const { width } = Dimensions.get('window');
   const diagramWidth = width - 40;
   const diagramHeight = diagramWidth * 1.2;
+  
+  function handleVehicleTypeChange(type: VehicleType) {
+    setVehicleType(type);
+    onVehicleTypeChange?.(type);
+  }
 
   function handlePress(event: any) {
     if (!isEditable) return;
@@ -28,93 +40,170 @@ export function CarDiagram({ onAddDamage, damagePoints, isEditable = true }: Car
     const xPercent = (locationX / diagramWidth) * 100;
     const yPercent = (locationY / diagramHeight) * 100;
     
-    onAddDamage(xPercent, yPercent, currentView);
+    // For now, we'll use 'front' as default view for all vehicle types
+    onAddDamage(xPercent, yPercent, 'front');
   }
-
-  // Filter damage points for current view
-  const currentViewDamages = damagePoints.filter(d => d.view === currentView);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>6. Κατάσταση Οχήματος</Text>
       
-      {/* View selector buttons */}
+      {/* Vehicle Type selector buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.viewButton, currentView === 'front' && styles.activeButton]}
-          onPress={() => setCurrentView('front')}
+          style={[styles.viewButton, vehicleType === 'car' && styles.activeButton]}
+          onPress={() => handleVehicleTypeChange('car')}
         >
-          <Text style={[styles.buttonText, currentView === 'front' && styles.activeButtonText]}>
-            Μπροστά
+          <Text style={[styles.buttonText, vehicleType === 'car' && styles.activeButtonText]}>
+            ΑΜΑΞΙ
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.viewButton, currentView === 'rear' && styles.activeButton]}
-          onPress={() => setCurrentView('rear')}
+          style={[styles.viewButton, vehicleType === 'scooter' && styles.activeButton]}
+          onPress={() => handleVehicleTypeChange('scooter')}
         >
-          <Text style={[styles.buttonText, currentView === 'rear' && styles.activeButtonText]}>
-            Πίσω
+          <Text style={[styles.buttonText, vehicleType === 'scooter' && styles.activeButtonText]}>
+            SCOOTER
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.viewButton, currentView === 'left' && styles.activeButton]}
-          onPress={() => setCurrentView('left')}
+          style={[styles.viewButton, vehicleType === 'atv' && styles.activeButton]}
+          onPress={() => handleVehicleTypeChange('atv')}
         >
-          <Text style={[styles.buttonText, currentView === 'left' && styles.activeButtonText]}>
-            Αριστερά
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.viewButton, currentView === 'right' && styles.activeButton]}
-          onPress={() => setCurrentView('right')}
-        >
-          <Text style={[styles.buttonText, currentView === 'right' && styles.activeButtonText]}>
-            Δεξιά
+          <Text style={[styles.buttonText, vehicleType === 'atv' && styles.activeButtonText]}>
+            ATV
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Diagram container */}
+      {/* Vehicle Diagram Image */}
       <TouchableOpacity 
         onPress={handlePress} 
         activeOpacity={0.9}
         disabled={!isEditable}
         style={styles.diagramContainer}
       >
-        <Svg width={diagramWidth} height={diagramHeight} viewBox="0 0 300 360">
-          {currentView === 'front' && <FrontView />}
-          {currentView === 'rear' && <RearView />}
-          {currentView === 'left' && <LeftView />}
-          {currentView === 'right' && <RightView />}
-          
-          {/* Damage markers for current view */}
-          {currentViewDamages.map((damage) => (
-            <Circle
+        <Image
+          source={vehicleImages[vehicleType]}
+          style={styles.vehicleImage}
+          resizeMode="contain"
+        />
+        
+        {/* Damage markers overlaid on image */}
+        <View style={styles.damageOverlay}>
+          {damagePoints.map((damage) => (
+            <View
               key={damage.id}
-              cx={(damage.x / 100) * 300}
-              cy={(damage.y / 100) * 360}
-              r="8"
-              fill="#FF0000"
-              stroke="#8B0000"
-              strokeWidth="2"
-              opacity={0.85}
+              style={[
+                styles.damageMarker,
+                {
+                  left: `${damage.x}%`,
+                  top: `${damage.y}%`,
+                }
+              ]}
             />
           ))}
-        </Svg>
+        </View>
       </TouchableOpacity>
       
       <Text style={styles.hint}>
-        Πατήστε στο όχημα για να σημειώσετε ζημιές
+        Πατήστε στο διάγραμμα για να σημειώσετε ζημιές
       </Text>
     </View>
   );
 }
 
-// Front view of the car
-function FrontView() {
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    margin: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 8,
+  },
+  viewButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  activeButton: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  buttonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#666',
+  },
+  activeButtonText: {
+    color: '#fff',
+  },
+  diagramContainer: {
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    position: 'relative',
+  },
+  vehicleImage: {
+    width: '100%',
+    height: 400,
+  },
+  damageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  damageMarker: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FF0000',
+    borderWidth: 2,
+    borderColor: '#8B0000',
+    marginLeft: -8,
+    marginTop: -8,
+    opacity: 0.85,
+  },
+  hint: {
+    marginTop: 15,
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+});
+
+// Old FrontView function - no longer needed
+function FrontView_OLD() {
   return (
     <G>
       {/* Hood/bonnet top edge */}
@@ -196,8 +285,8 @@ function FrontView() {
   );
 }
 
-// Rear view of the car
-function RearView() {
+// Old RearView function - no longer needed
+function RearView_OLD() {
   return (
     <G>
       {/* Trunk top edge */}
@@ -278,8 +367,8 @@ function RearView() {
   );
 }
 
-// Left side view of the car
-function LeftView() {
+// Old LeftView function - no longer needed
+function LeftView_OLD() {
   return (
     <G>
       {/* Car body outline - side profile */}
@@ -360,8 +449,8 @@ function LeftView() {
   );
 }
 
-// Right side view of the car (mirror of left)
-function RightView() {
+// Old RightView function - no longer needed  
+function RightView_OLD() {
   return (
     <G>
       {/* Car body outline - side profile (mirrored) */}
@@ -441,65 +530,3 @@ function RightView() {
     </G>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    margin: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 8,
-  },
-  viewButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ddd',
-  },
-  activeButton: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  buttonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  activeButtonText: {
-    color: '#fff',
-  },
-  diagramContainer: {
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  hint: {
-    marginTop: 15,
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-});

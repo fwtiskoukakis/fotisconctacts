@@ -127,7 +127,7 @@ export default function DamageReportScreen() {
 
       <ScrollView style={s.list} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {damages.map(d => (
-          <TouchableOpacity key={d.id} style={s.card} onPress={() => router.push(`/contract-details?contractId=${d.contractId}`)}>
+          <TouchableOpacity key={d.id} style={s.card} onPress={() => router.push(`/damage-details?damageId=${d.id}`)}>
             <View style={s.row}>
               <View style={s.left}>
                 <Text style={s.name} numberOfLines={1}>{d.carLicensePlate} - {getViewLabel(d.viewSide)}</Text>

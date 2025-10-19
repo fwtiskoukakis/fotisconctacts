@@ -54,7 +54,10 @@ export function ContextAwareFab({
   const [scaleAnim] = useState(new Animated.Value(0));
 
   function getActionsForCurrentPage(): FabAction[] {
-    switch (pathname) {
+    // Normalize pathname to handle both /page and /(tabs)/page formats
+    const normalizedPath = pathname.replace('/(tabs)', '').replace('//', '/');
+    
+    switch (normalizedPath) {
       case '/':
         return [
           {
