@@ -71,6 +71,36 @@ export default function CarsScreen() {
     }
   }
 
+  async function deleteCar(car: Car) {
+    Alert.alert(
+      'Επιβεβαίωση Διαγραφής',
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε το αυτοκίνητο "${car.makeModel}" (${car.licensePlate}); Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('cars')
+                .delete()
+                .eq('id', car.id);
+
+              if (error) throw error;
+
+              Alert.alert('Επιτυχία', `Το αυτοκίνητο ${car.makeModel} διαγράφηκε επιτυχώς.`);
+              loadCars();
+            } catch (error) {
+              console.error('Error deleting car:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής αυτοκινήτου.');
+            }
+          }
+        }
+      ]
+    );
+  }
+
   function filterCars() {
     let result = cars;
     if (filter === 'available') result = result.filter(c => c.isAvailable);
@@ -118,7 +148,7 @@ export default function CarsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={s.list} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      <ScrollView style={s.list} contentContainerStyle={s.listContent} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {filtered.map(c => (
           <TouchableOpacity key={c.id} style={s.card} onPress={() => router.push(`/car-details?carId=${c.id}`)}>
             <View style={s.row}>
@@ -134,6 +164,15 @@ export default function CarsScreen() {
                   </Text>
                 </View>
                 <Text style={s.price}>€{c.dailyRate}/ημ</Text>
+                <TouchableOpacity
+                  style={s.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    deleteCar(c);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                </TouchableOpacity>
               </View>
             </View>
           </TouchableOpacity>
@@ -164,6 +203,7 @@ const s = StyleSheet.create({
   filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   filterTextActive: { color: '#fff' },
   list: { flex: 1, padding: 8 },
+  listContent: { paddingBottom: 100, flexGrow: 1 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, ...Shadows.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   left: { flex: 1, marginRight: 8 },
@@ -173,6 +213,7 @@ const s = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  deleteButton: { padding: 4 },
   empty: { alignItems: 'center', paddingVertical: 48 },
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
 });

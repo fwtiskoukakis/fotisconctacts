@@ -62,6 +62,33 @@ export default function ContractDetailsScreen() {
     if (contract) router.push(`/edit-contract?contractId=${contract.id}`);
   }
 
+  async function handleDelete() {
+    if (!contract) return;
+    
+    Alert.alert(
+      'Επιβεβαίωση Διαγραφής',
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε το συμβόλαιο του/της ${contract.renterInfo.fullName}; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await SupabaseContractService.deleteContract(contract.id);
+              Alert.alert('Επιτυχία', 'Το συμβόλαιο διαγράφηκε επιτυχώς.', [
+                { text: 'OK', onPress: () => router.push('/(tabs)/') }
+              ]);
+            } catch (error) {
+              console.error('Error deleting contract:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής συμβολαίου.');
+            }
+          }
+        }
+      ]
+    );
+  }
+
   async function handlePushToAADE() {
     if (!contract) return;
 
@@ -239,6 +266,10 @@ export default function ContractDetailsScreen() {
             <Ionicons name="create" size={18} color="#fff" />
             <Text style={s.btnText}>Επεξεργασία</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={[s.btn, s.btnDelete]} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={18} color="#fff" />
+            <Text style={s.btnText}>Διαγραφή</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Professional PDF Generator */}
@@ -300,6 +331,7 @@ const s = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 8 },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, padding: 12, borderRadius: 12 },
   btnSecondary: { backgroundColor: Colors.success },
+  btnDelete: { backgroundColor: Colors.error },
   btnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   aadeButton: {
     flexDirection: 'row',

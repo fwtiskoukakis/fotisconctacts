@@ -11,7 +11,8 @@ import { isAADEConfigured } from './aade-config';
  */
 export async function createContractWithAADE(
   contract: Contract,
-  contractId: string
+  contractId: string,
+  userId: string
 ): Promise<{
   success: boolean;
   aadeDclId?: number;
@@ -38,7 +39,8 @@ export async function createContractWithAADE(
     // Submit to AADE
     const result = await AADEIntegrationService.submitContractToAADE(
       contractId,
-      contract
+      contract,
+      userId
     );
 
     if (result.success) {

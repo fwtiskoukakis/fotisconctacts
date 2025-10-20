@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Χρειαζόμαστε πρόσβαση στην κάμερα για να βγάλετε φωτογραφίες του οχήματος",
         "NSPhotoLibraryUsageDescription": "Χρειαζόμαστε πρόσβαση στη βιβλιοθήκη φωτογραφιών για να αποθηκεύσουμε τις φωτογραφίες του οχήματος",
-        "NSPhotoLibraryAddUsageDescription": "Χρειαζόμαστε πρόσβαση για να αποθηκεύσουμε τις φωτογραφίες του οχήματος"
+        "NSPhotoLibraryAddUsageDescription": "Χρειαζόμαστε πρόσβαση για να αποθηκεύσουμε τις φωτογραφίες του οχήματος",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -67,7 +68,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "2a8f2c33-9069-4445-9e18-1cfe86e404d7"
+        "projectId": "7bea0453-324a-4cb4-894c-48f86d8f37cc"
       }
     },
     "privacy": "public"

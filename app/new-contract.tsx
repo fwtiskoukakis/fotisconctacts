@@ -43,6 +43,7 @@ export default function NewContractScreen() {
     taxId: '',
     driverLicenseNumber: '',
     phoneNumber: '',
+    phone: '', // Add missing phone property
     email: '',
     address: '',
   });
@@ -284,7 +285,7 @@ export default function NewContractScreen() {
       Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς!', [
         {
           text: 'OK',
-          onPress: () => router.push('/(tabs)/contracts')
+          onPress: () => router.push('/(tabs)/')
         }
       ]);
     } catch (error) {

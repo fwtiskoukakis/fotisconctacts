@@ -114,12 +114,13 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 10,
     left: 0,
     right: 0,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     paddingHorizontal: 8,
     backgroundColor: 'transparent',
+    zIndex: 10,
   },
   blurContainer: {
     borderRadius: 32,

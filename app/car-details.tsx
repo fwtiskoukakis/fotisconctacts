@@ -85,6 +85,39 @@ export default function CarDetailsScreen() {
     setRefreshing(false);
   };
 
+  async function handleDelete() {
+    if (!car) return;
+    
+    Alert.alert(
+      'Επιβεβαίωση Διαγραφής',
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε το αυτοκίνητο ${car.makeModel} (${car.licensePlate}); Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('cars')
+                .delete()
+                .eq('id', car.id);
+
+              if (error) throw error;
+
+              Alert.alert('Επιτυχία', `Το αυτοκίνητο ${car.makeModel} διαγράφηκε επιτυχώς.`, [
+                { text: 'OK', onPress: () => router.push('/(tabs)/cars') }
+              ]);
+            } catch (error) {
+              console.error('Error deleting car:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής αυτοκινήτου.');
+            }
+          }
+        }
+      ]
+    );
+  }
+
   function handleEdit() {
     // TODO: Create edit-car page or modal
     Alert.alert('Επεξεργασία', 'Η λειτουργία επεξεργασίας αυτοκινήτου θα είναι σύντομα διαθέσιμη.');
@@ -166,14 +199,23 @@ export default function CarDetailsScreen() {
             </View>
           </View>
           
-          {/* Edit Button */}
-          <TouchableOpacity
-            style={s.editButton}
-            onPress={handleEdit}
-          >
-            <Ionicons name="create-outline" size={20} color="#fff" />
-            <Text style={s.editButtonText}>Επεξεργασία</Text>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={s.actionButtons}>
+            <TouchableOpacity
+              style={s.editButton}
+              onPress={handleEdit}
+            >
+              <Ionicons name="create-outline" size={20} color="#fff" />
+              <Text style={s.editButtonText}>Επεξεργασία</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.deleteButton}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+              <Text style={s.deleteButtonText}>Διαγραφή</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -204,7 +246,13 @@ const s = StyleSheet.create({
   statCard: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 12, ...Shadows.sm },
   statValue: { fontSize: 18, fontWeight: '700', marginVertical: 4 },
   statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '600' },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
   editButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -212,10 +260,25 @@ const s = StyleSheet.create({
     backgroundColor: Colors.primary,
     padding: 14,
     borderRadius: 12,
-    marginTop: 12,
     ...Shadows.md,
   },
   editButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.error,
+    padding: 14,
+    borderRadius: 12,
+    ...Shadows.md,
+  },
+  deleteButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',

@@ -148,6 +148,7 @@ export class SupabaseContractService {
         taxId: data.renter_tax_id,
         driverLicenseNumber: data.renter_driver_license_number,
         phoneNumber: data.renter_phone_number,
+        phone: data.renter_phone_number, // Add phone property
         email: data.renter_email || '',
         address: data.renter_address,
       },
@@ -161,19 +162,29 @@ export class SupabaseContractService {
         dropoffLocation: data.dropoff_location,
         isDifferentDropoffLocation: data.is_different_dropoff_location || false,
         totalCost: parseFloat(data.total_cost) || 0,
+        depositAmount: parseFloat(data.deposit_amount) || 0,
+        insuranceCost: parseFloat(data.insurance_cost) || 0,
       },
       
       carInfo: {
         makeModel: data.car_make_model,
+        make: data.car_make_model?.split(' ')[0] || '',
+        model: data.car_make_model?.split(' ').slice(1).join(' ') || '',
         year: data.car_year,
         licensePlate: data.car_license_plate,
         mileage: data.car_mileage,
+        category: data.car_category,
+        color: data.car_color,
       },
       
       carCondition: {
         fuelLevel: data.fuel_level,
         mileage: data.car_mileage,
         insuranceType: data.insurance_type,
+        exteriorCondition: data.exterior_condition || 'good',
+        interiorCondition: data.interior_condition || 'good',
+        mechanicalCondition: data.mechanical_condition || 'good',
+        notes: data.condition_notes,
       },
       
       damagePoints: data.damage_points?.map((dp: any) => ({
@@ -336,16 +347,24 @@ export class SupabaseContractService {
         dropoff_location: contract.rentalPeriod.dropoffLocation,
         is_different_dropoff_location: contract.rentalPeriod.isDifferentDropoffLocation,
         total_cost: contract.rentalPeriod.totalCost,
+        deposit_amount: contract.rentalPeriod.depositAmount || 0,
+        insurance_cost: contract.rentalPeriod.insuranceCost || 0,
         
         // Car info
         car_make_model: contract.carInfo.makeModel,
         car_year: contract.carInfo.year,
         car_license_plate: contract.carInfo.licensePlate,
         car_mileage: contract.carCondition?.mileage || contract.carInfo.mileage || 0,
+        car_category: contract.carInfo.category,
+        car_color: contract.carInfo.color,
         
         // Car condition
         fuel_level: contract.carCondition.fuelLevel,
         insurance_type: contract.carCondition.insuranceType,
+        exterior_condition: contract.carCondition.exteriorCondition,
+        interior_condition: contract.carCondition.interiorCondition,
+        mechanical_condition: contract.carCondition.mechanicalCondition,
+        condition_notes: contract.carCondition.notes,
         
         // Signature
         client_signature_url: contract.clientSignature,
@@ -400,11 +419,11 @@ export class SupabaseContractService {
    */
   static async updateContract(id: string, contract: Contract): Promise<Contract> {
     try {
-      // Update the contract
-      const contractData = {
+      // Update the contract - only include fields that definitely exist
+      const contractData: any = {
         user_id: contract.userId,
         
-        // Renter info
+        // Renter info (these should exist)
         renter_full_name: contract.renterInfo.fullName,
         renter_id_number: contract.renterInfo.idNumber,
         renter_tax_id: contract.renterInfo.taxId,
@@ -413,7 +432,7 @@ export class SupabaseContractService {
         renter_email: contract.renterInfo.email,
         renter_address: contract.renterInfo.address,
         
-        // Rental period
+        // Rental period (these should exist)
         pickup_date: contract.rentalPeriod.pickupDate.toISOString(),
         pickup_time: contract.rentalPeriod.pickupTime,
         pickup_location: contract.rentalPeriod.pickupLocation,
@@ -423,35 +442,66 @@ export class SupabaseContractService {
         is_different_dropoff_location: contract.rentalPeriod.isDifferentDropoffLocation,
         total_cost: contract.rentalPeriod.totalCost,
         
-        // Car info
+        // Car info (these should exist)
         car_make_model: contract.carInfo.makeModel,
         car_year: contract.carInfo.year,
         car_license_plate: contract.carInfo.licensePlate,
         car_mileage: contract.carCondition?.mileage || contract.carInfo.mileage || 0,
         
-        // Car condition
+        // Car condition (these should exist)
         fuel_level: contract.carCondition.fuelLevel,
         insurance_type: contract.carCondition.insuranceType,
         
-        // Signature
+        // Signature (should exist)
         client_signature_url: contract.clientSignature,
         
-        // AADE
+        // AADE (these should exist)
         aade_status: contract.aadeStatus || null,
         aade_dcl_id: contract.aadeDclId || null,
       };
 
-      const { data: updatedContract, error: contractError } = await supabase
+      // Add optional fields only if they have values (prevents 406 if column doesn't exist)
+      if (contract.rentalPeriod.depositAmount) contractData.deposit_amount = contract.rentalPeriod.depositAmount;
+      if (contract.rentalPeriod.insuranceCost) contractData.insurance_cost = contract.rentalPeriod.insuranceCost;
+      if (contract.carInfo.category) contractData.car_category = contract.carInfo.category;
+      if (contract.carInfo.color) contractData.car_color = contract.carInfo.color;
+      if (contract.carCondition.exteriorCondition) contractData.exterior_condition = contract.carCondition.exteriorCondition;
+      if (contract.carCondition.interiorCondition) contractData.interior_condition = contract.carCondition.interiorCondition;
+      if (contract.carCondition.mechanicalCondition) contractData.mechanical_condition = contract.carCondition.mechanicalCondition;
+      if (contract.carCondition.notes) contractData.condition_notes = contract.carCondition.notes;
+
+      // First try to update without select to avoid 406 errors
+      console.log('Updating contract with ID:', id);
+      const { error: updateError } = await supabase
         .from('contracts')
         .update(contractData)
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('Error updating contract:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Contract updated successfully in database!');
+
+      // Then fetch the updated contract separately
+      const { data: updatedContract, error: fetchError } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          damage_points(*)
+        `)
         .eq('id', id)
-        .select()
         .single();
 
-      if (contractError) {
-        console.error('Error updating contract:', contractError);
-        throw contractError;
+      if (fetchError || !updatedContract) {
+        console.error('Error fetching updated contract:', fetchError);
+        console.log('⚠️ Fetch failed but update succeeded, returning input contract');
+        // Even if fetch fails, update succeeded, so just return the input contract
+        return contract;
       }
+
+      console.log('✅ Fetched updated contract successfully!');
 
       // Delete old damage points and insert new ones
       await supabase

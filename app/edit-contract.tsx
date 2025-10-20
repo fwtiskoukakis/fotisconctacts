@@ -182,14 +182,52 @@ export default function EditContractScreen() {
     };
 
     try {
-      await SupabaseContractService.updateContract(updatedContract.id, updatedContract);
-      Alert.alert('Επιτυχία', 'Το συμβόλαιο ενημερώθηκε επιτυχώς!');
-      router.push('/');
-    } catch (error) {
-      console.error('Error saving contract:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία ενημέρωσης συμβολαίου.');
-    } finally {
+      console.log('Starting contract update...');
+      const result = await SupabaseContractService.updateContract(updatedContract.id, updatedContract);
+      console.log('Contract updated successfully!', result);
+      
       setIsSaving(false);
+      
+      // Show success notification
+      Alert.alert(
+        '✅ Επιτυχία!', 
+        'Το συμβόλαιο ενημερώθηκε επιτυχώς!\n\nΌλες οι αλλαγές σας έχουν αποθηκευτεί στη βάση δεδομένων.',
+        [
+          {
+            text: 'Προβολή',
+            onPress: () => router.push(`/contract-details?contractId=${updatedContract.id}`)
+          },
+          {
+            text: 'Αρχική',
+            onPress: () => router.push('/(tabs)/'),
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error saving contract:', error);
+      setIsSaving(false);
+      
+      // Show detailed error message
+      const errorMessage = error?.message || 'Αποτυχία ενημέρωσης συμβολαίου.';
+      
+      if (errorMessage.includes('migration') || errorMessage.includes('columns')) {
+        Alert.alert(
+          '⚠️ Απαιτείται Ενημέρωση Βάσης',
+          'Χρειάζεται να εκτελέσετε το migration στο Supabase:\n\n1. Ανοίξτε το Supabase Dashboard\n2. Πηγαίνετε στο SQL Editor\n3. Εκτελέστε: supabase/ensure-contracts-table-complete.sql\n\nΑυτό θα προσθέσει τα απαραίτητα πεδία.',
+          [
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        Alert.alert(
+          '❌ Σφάλμα',
+          `Αποτυχία αποθήκευσης:\n\n${errorMessage}`,
+          [
+            { text: 'OK' }
+          ]
+        );
+      }
     }
   }
 

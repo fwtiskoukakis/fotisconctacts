@@ -59,6 +59,36 @@ export default function DamageReportScreen() {
     }
   }
 
+  async function deleteDamage(damage: DamageReport) {
+    Alert.alert(
+      'Επιβεβαίωση Διαγραφής',
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή τη ζημιά; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('damage_points')
+                .delete()
+                .eq('id', damage.id);
+
+              if (error) throw error;
+
+              Alert.alert('Επιτυχία', 'Η ζημιά διαγράφηκε επιτυχώς.');
+              loadDamages();
+            } catch (error) {
+              console.error('Error deleting damage:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ζημιάς.');
+            }
+          }
+        }
+      ]
+    );
+  }
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadDamages();
@@ -125,7 +155,7 @@ export default function DamageReportScreen() {
         </View>
       </View>
 
-      <ScrollView style={s.list} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      <ScrollView style={s.list} contentContainerStyle={s.listContent} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {damages.map(d => (
           <TouchableOpacity key={d.id} style={s.card} onPress={() => router.push(`/damage-details?damageId=${d.id}`)}>
             <View style={s.row}>
@@ -142,6 +172,15 @@ export default function DamageReportScreen() {
                   </Text>
                 </View>
                 <Text style={s.pos}>X:{d.xPosition.toFixed(1)}% Y:{d.yPosition.toFixed(1)}%</Text>
+                <TouchableOpacity
+                  style={s.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    deleteDamage(d);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                </TouchableOpacity>
               </View>
             </View>
           </TouchableOpacity>
@@ -168,6 +207,7 @@ const s = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
   statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '600' },
   list: { flex: 1, padding: 8 },
+  listContent: { paddingBottom: 100, flexGrow: 1 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, ...Shadows.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   left: { flex: 1, marginRight: 8 },
@@ -179,6 +219,7 @@ const s = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   badgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
   pos: { fontSize: 9, color: Colors.textTertiary },
+  deleteButton: { padding: 4 },
   empty: { alignItems: 'center', paddingVertical: 48 },
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
 });

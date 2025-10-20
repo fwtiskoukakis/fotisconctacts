@@ -2,38 +2,8 @@ import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Colors, Typography } from 'react-native-ui-lib';
 import { initializeAADE } from '../utils/aade-config';
 import { AuthService } from '../services/auth.service';
-
-// Configure React Native UI Lib
-Colors.loadColors({
-  primary: '#007AFF',
-  secondary: '#5856D6',
-  success: '#34C759',
-  error: '#FF3B30',
-  warning: '#FF9500',
-  info: '#5AC8FA',
-  background: '#F2F2F7',
-  surface: '#FFFFFF',
-  text: '#000000',
-  textSecondary: '#8E8E93',
-  border: '#C6C6C8',
-  borderLight: '#E5E5EA',
-});
-
-Typography.loadTypographies({
-  h1: { fontSize: 34, fontWeight: 'bold' },
-  h2: { fontSize: 28, fontWeight: 'bold' },
-  h3: { fontSize: 22, fontWeight: '600' },
-  h4: { fontSize: 18, fontWeight: '600' },
-  body: { fontSize: 16, fontWeight: '400' },
-  bodyLarge: { fontSize: 18, fontWeight: '400' },
-  bodyMedium: { fontSize: 16, fontWeight: '400' },
-  bodySmall: { fontSize: 14, fontWeight: '400' },
-  bodyXSmall: { fontSize: 12, fontWeight: '400' },
-  caption: { fontSize: 12, fontWeight: '400' },
-});
 
 /**
  * Root layout component with authentication protection

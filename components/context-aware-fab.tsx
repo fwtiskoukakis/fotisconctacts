@@ -364,9 +364,10 @@ export function ContextAwareFab({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 90, // Higher above bottom tab bar
+    bottom: 100, // Higher above bottom tab bar
     right: 20,
-    zIndex: 1000,
+    zIndex: 9999, // Above navbar (navbar is z-index: 10)
+    elevation: 9999, // For Android
   },
   fab: {
     width: 56,

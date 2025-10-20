@@ -131,6 +131,7 @@ export default function ContractsScreen() {
       {/* List */}
       <ScrollView
         style={styles.list}
+        contentContainerStyle={styles.listContent}
         {...smoothScrollConfig}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
@@ -224,6 +225,7 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   filterTextActive: { color: '#fff' },
   list: { flex: 1, padding: 8 },
+  listContent: { paddingBottom: 100, flexGrow: 1 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,

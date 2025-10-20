@@ -77,9 +77,8 @@ export function FloatingActionButton({ actions }: FloatingActionButtonProps) {
         style={[
           styles.actionButton,
           {
-            transform: [{ translateY }],
-            opacity,
             transform: [{ translateY }, { scale }],
+            opacity,
           },
         ]}
       >
@@ -138,9 +137,10 @@ export function FloatingActionButton({ actions }: FloatingActionButtonProps) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 90, // Higher above bottom tab bar
+    bottom: 100, // Higher above bottom tab bar
     right: 20,
-    zIndex: 1000,
+    zIndex: 9999, // Above navbar
+    elevation: 9999, // For Android
   },
   backdrop: {
     position: 'absolute',

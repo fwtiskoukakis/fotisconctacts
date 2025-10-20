@@ -35,10 +35,10 @@ export class PDFExportService {
       // For now, we'll save as HTML file since PDF generation requires additional libraries
       // In a real implementation, you would use libraries like react-native-pdf or html-pdf
       const fileName = `contract_${contract.id}_${new Date().toISOString().split('T')[0]}.html`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory || ''}${fileName}`;
       
       await FileSystem.writeAsStringAsync(fileUri, htmlContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       return fileUri;
@@ -70,10 +70,10 @@ export class PDFExportService {
       const htmlContent = this.generateMultipleContractsHTML(contracts, defaultOptions);
       
       const fileName = `contracts_${new Date().toISOString().split('T')[0]}.html`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory || ''}${fileName}`;
       
       await FileSystem.writeAsStringAsync(fileUri, htmlContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       return fileUri;

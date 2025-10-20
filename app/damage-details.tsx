@@ -87,6 +87,39 @@ export default function DamageDetailsScreen() {
     }
   }
 
+  async function handleDelete() {
+    if (!damage) return;
+    
+    Alert.alert(
+      'Επιβεβαίωση Διαγραφής',
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή τη ζημιά; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('damage_points')
+                .delete()
+                .eq('id', damage.id);
+
+              if (error) throw error;
+
+              Alert.alert('Επιτυχία', 'Η ζημιά διαγράφηκε επιτυχώς.', [
+                { text: 'OK', onPress: () => router.push('/(tabs)/damage-report') }
+              ]);
+            } catch (error) {
+              console.error('Error deleting damage:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ζημιάς.');
+            }
+          }
+        }
+      ]
+    );
+  }
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'minor': return Colors.success;
@@ -136,7 +169,7 @@ export default function DamageDetailsScreen() {
         showActions
       />
 
-      <ScrollView style={styles.content} {...smoothScrollConfig}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} {...smoothScrollConfig}>
         {/* Breadcrumb */}
         <View style={styles.breadcrumb}>
           <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.breadcrumbItem}>
@@ -233,6 +266,14 @@ export default function DamageDetailsScreen() {
             <Ionicons name="create-outline" size={20} color={Colors.primary} />
             <Text style={styles.secondaryButtonText}>Επεξεργασία</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={handleDelete}
+          >
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+            <Text style={styles.deleteButtonText}>Διαγραφή</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -248,6 +289,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 100,
+    flexGrow: 1,
   },
   loading: {
     flex: 1,
@@ -385,9 +430,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.primary,
+  },
+  deleteButton: {
+    backgroundColor: Colors.error,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 

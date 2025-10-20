@@ -5,7 +5,6 @@ export interface DamageTemplate {
   damageType: 'scratch' | 'dent' | 'crack' | 'other';
   severity: 'minor' | 'moderate' | 'severe';
   location: string;
-  description: string;
   estimatedCost: number;
   category: string; // e.g., "Exterior", "Interior", "Mechanical"
   isDefault: boolean;
@@ -103,11 +102,10 @@ export class DamageTemplateService {
       {
         id: 'default_scratch_minor',
         name: 'Μικρή Γρατζουνιά',
-        description: 'Μικρή γρατζουνιά στο εξωτερικό',
+        description: 'Μικρή γρατζουνιά που μπορεί να διορθωθεί με πολικό.',
         damageType: 'scratch',
         severity: 'minor',
         location: 'Εξωτερικό',
-        description: 'Μικρή γρατζουνιά που μπορεί να διορθωθεί με πολικό.',
         estimatedCost: 50,
         category: 'Exterior',
         isDefault: true,
@@ -117,11 +115,10 @@ export class DamageTemplateService {
       {
         id: 'default_dent_moderate',
         name: 'Σκάσιμο Μέτριο',
-        description: 'Μέτριο σκάσιμο στο αμάξι',
+        description: 'Σκάσιμο που απαιτεί επαγγελματική επισκευή.',
         damageType: 'dent',
         severity: 'moderate',
         location: 'Εξωτερικό',
-        description: 'Σκάσιμο που απαιτεί επαγγελματική επισκευή.',
         estimatedCost: 200,
         category: 'Exterior',
         isDefault: true,
@@ -131,11 +128,10 @@ export class DamageTemplateService {
       {
         id: 'default_crack_severe',
         name: 'Ρωγμή Σοβαρή',
-        description: 'Σοβαρή ρωγμή στο παρμπρίζ',
+        description: 'Σοβαρή ρωγμή που απαιτεί αντικατάσταση παρμπρίζ.',
         damageType: 'crack',
         severity: 'severe',
         location: 'Παρμπρίζ',
-        description: 'Σοβαρή ρωγμή που απαιτεί αντικατάσταση παρμπρίζ.',
         estimatedCost: 300,
         category: 'Exterior',
         isDefault: true,
@@ -145,11 +141,10 @@ export class DamageTemplateService {
       {
         id: 'default_interior_damage',
         name: 'Ζημιά Εσωτερικού',
-        description: 'Ζημιά στο εσωτερικό του οχήματος',
+        description: 'Μικρή ζημιά στο εσωτερικό που μπορεί να καθαριστεί.',
         damageType: 'other',
         severity: 'minor',
         location: 'Εσωτερικό',
-        description: 'Μικρή ζημιά στο εσωτερικό που μπορεί να καθαριστεί.',
         estimatedCost: 30,
         category: 'Interior',
         isDefault: true,
@@ -159,11 +154,10 @@ export class DamageTemplateService {
       {
         id: 'default_mechanical_issue',
         name: 'Μηχανικό Πρόβλημα',
-        description: 'Μηχανικό πρόβλημα στο όχημα',
+        description: 'Μηχανικό πρόβλημα που απαιτεί επισκευή.',
         damageType: 'other',
         severity: 'severe',
         location: 'Μηχανή',
-        description: 'Μηχανικό πρόβλημα που απαιτεί επισκευή.',
         estimatedCost: 500,
         category: 'Mechanical',
         isDefault: true,

@@ -130,6 +130,12 @@ export const Typography = {
     lineHeight: 22,
     letterSpacing: -0.41,
   },
+  bodyLarge: { 
+    fontSize: 18,
+    fontWeight: '400' as const,
+    lineHeight: 23,
+    letterSpacing: -0.24,
+  },
   callout: { 
     fontSize: 16,
     fontWeight: '400' as const,
@@ -159,6 +165,43 @@ export const Typography = {
     fontWeight: '400' as const,
     lineHeight: 13,
     letterSpacing: 0.07,
+  },
+  // Additional typography styles
+  h3: { 
+    fontSize: 18, 
+    fontWeight: '600' as const,
+    lineHeight: 23,
+    letterSpacing: -0.24,
+  },
+  h4: { 
+    fontSize: 16, 
+    fontWeight: '600' as const,
+    lineHeight: 21,
+    letterSpacing: -0.32,
+  },
+  caption: { 
+    fontSize: 12,
+    fontWeight: '400' as const,
+    lineHeight: 16,
+    letterSpacing: 0,
+  },
+  bodyMedium: { 
+    fontSize: 15,
+    fontWeight: '500' as const,
+    lineHeight: 20,
+    letterSpacing: -0.24,
+  },
+  bodySmall: { 
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 19,
+    letterSpacing: -0.16,
+  },
+  bodyXSmall: { 
+    fontSize: 13,
+    fontWeight: '400' as const,
+    lineHeight: 18,
+    letterSpacing: -0.08,
   },
 };
 
@@ -332,4 +375,40 @@ export const HapticFeedback = {
   success: 'notificationSuccess',
   warning: 'notificationWarning',
   error: 'notificationError',
+};
+
+// iOS 26 Glass Morphism Effects
+export const Glassmorphism = {
+  light: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(20px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  medium: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backdropFilter: 'blur(30px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  dark: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backdropFilter: 'blur(20px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(25px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 16,
+  },
+  modal: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(40px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 24,
+  },
 };
