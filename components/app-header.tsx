@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthService } from '../services/auth.service';
 import { Colors, Typography, Spacing, Glass, BorderRadius, BlurIntensity } from '../utils/design-system';
+import { FleetOSHeaderLogo } from './fleetos-logo';
+import { useThemeColors, useIsDarkMode, useThemeToggle } from '../contexts/theme-context';
 
 interface AppHeaderProps {
   showBack?: boolean;
@@ -21,6 +23,9 @@ interface UserInfo {
 
 export function AppHeader({ showBack = false, title, showActions = true, onBackPress }: AppHeaderProps) {
   const router = useRouter();
+  const colors = useThemeColors();
+  const isDark = useIsDarkMode();
+  const { toggleTheme } = useThemeToggle();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: 'User',
@@ -75,40 +80,40 @@ export function AppHeader({ showBack = false, title, showActions = true, onBackP
 
   return (
     <>
-      <BlurView intensity={BlurIntensity.regular} tint="light" style={styles.container}>
+      <BlurView intensity={BlurIntensity.regular} tint={isDark ? "dark" : "light"} style={[styles.container, { backgroundColor: colors.glass }]}>
         <View style={styles.content}>
           {/* Left */}
           {showBack ? (
             <TouchableOpacity onPress={onBackPress || (() => router.back())} style={styles.iconButton} activeOpacity={0.6}>
-              <Ionicons name="chevron-back" size={28} color={Colors.primary} />
+              <Ionicons name="chevron-back" size={28} color={colors.primary} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => router.push('/')} style={styles.logoContainer} activeOpacity={0.6}>
-              <Image
-                source={require('../assets/logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <FleetOSHeaderLogo size={160} />
             </TouchableOpacity>
           )}
 
           {/* Center */}
-          {title && <Text style={styles.title} numberOfLines={1}>{title}</Text>}
+          {title && <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{title}</Text>}
 
           {/* Right */}
           {showActions && (
             <View style={styles.rightActions}>
+              <TouchableOpacity onPress={toggleTheme} style={styles.actionIcon} activeOpacity={0.6}>
+                <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={colors.text} />
+              </TouchableOpacity>
+              
               <TouchableOpacity onPress={() => router.push('/calendar')} style={styles.actionIcon} activeOpacity={0.6}>
-                <Ionicons name="calendar-outline" size={22} color={Colors.text} />
+                <Ionicons name="calendar-outline" size={22} color={colors.text} />
               </TouchableOpacity>
               
               <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.actionIcon} activeOpacity={0.6}>
-                <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+                <Ionicons name="notifications-outline" size={22} color={colors.text} />
                 {/* TODO: Add badge for unread notifications count */}
               </TouchableOpacity>
               
-              <TouchableOpacity onPress={() => setShowUserMenu(true)} style={styles.avatar} activeOpacity={0.6}>
-                <Text style={styles.avatarText}>{userInfo.avatarLetter}</Text>
+              <TouchableOpacity onPress={() => setShowUserMenu(true)} style={[styles.avatar, { backgroundColor: colors.primary }]} activeOpacity={0.6}>
+                <Text style={[styles.avatarText, { color: colors.textInverse }]}>{userInfo.avatarLetter}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -196,10 +201,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logo: {
-    height: 36,
-    width: 120,
   },
   title: {
     ...Typography.headline,

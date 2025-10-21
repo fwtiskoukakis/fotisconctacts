@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>FleetOS Logo Package</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 40px 20px;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 60px;
+  padding: 40px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+h1 {
+  color: #0B132B;
+  font-size: 48px;
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.tagline {
+  color: #06B6D4;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.subtitle {
+  color: #64748b;
+  margin-top: 10px;
+}
+
+.nav-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.nav-card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.nav-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.2);
+}
+
+.nav-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.nav-title {
+  color: #0B132B;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.nav-desc {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.files-section {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.section-title {
+  color: #0B132B;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 3px solid #06B6D4;
+}
+
+.file-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.file-item:hover {
+  border-color: #06B6D4;
+  background: #f0fdff;
+}
+
+.file-icon {
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.file-name {
+  color: #0B132B;
+  font-weight: 600;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.download-section {
+  background: linear-gradient(135deg, #06B6D4, #0891B2);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 8px 30px rgba(6, 182, 212, 0.3);
+}
+
+.download-section h2 {
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+.download-section p {
+  font-size: 16px;
+  margin-bottom: 25px;
+  opacity: 0.9;
+}
+
+.download-btn {
+  display: inline-block;
+  background: white;
+  color: #06B6D4;
+  padding: 15px 40px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+footer {
+  text-align: center;
+  margin-top: 50px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  h1 { font-size: 32px; }
+  .nav-cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <header>
+    <h1>FleetOS Logo Package</h1>
+    <p class="tagline">Forward Motion Design</p>
+    <p class="subtitle">Professional car rental management platform branding</p>
+  </header>
+
+  <div class="nav-cards">
+    
+    <a href="concept-c-final.html" class="nav-card">
+      <div class="nav-icon">🎨</div>
+      <div class="nav-title">Final Showcase</div>
+      <div class="nav-desc">View all logo variations with permanent glow effects</div>
+    </a>
+
+    <a href="concept-c-animated.html" class="nav-card">
+      <div class="nav-icon">✨</div>
+      <div class="nav-title">Animations</div>
+      <div class="nav-desc">9 stunning animation effects for your logo</div>
+    </a>
+
+    <a href="compare.html" class="nav-card">
+      <div class="nav-icon">🔍</div>
+      <div class="nav-title">Concept Comparison</div>
+      <div class="nav-desc">Compare different logo concepts side by side</div>
+    </a>
+
+  </div>
+
+  <div class="files-section">
+    <h2 class="section-title">📁 Horizontal Logos (With Text)</h2>
+    <div class="file-list">
+      <div class="file-item">
+        <span class="file-icon">☀️</span>
+        <span class="file-name">logo-horizontal-light.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🌙</span>
+        <span class="file-name">logo-horizontal-dark.svg</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-section">
+    <h2 class="section-title">📱 App Icons (Dark Theme with Glow)</h2>
+    <div class="file-list">
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">icon-192.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">icon-128.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">icon-64.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">icon-48.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">icon-32.svg</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-section">
+    <h2 class="section-title">✨ Animated Logos (Ready for Apps!)</h2>
+    <div class="file-list">
+      <div class="file-item">
+        <span class="file-icon">⭐</span>
+        <span class="file-name">animated/hero-animation.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">💫</span>
+        <span class="file-name">animated/pulse-glow.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🔄</span>
+        <span class="file-name">animated/rotate-continuous.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">➡️</span>
+        <span class="file-name">animated/arrow-slide.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">⏳</span>
+        <span class="file-name">animated/loading-spinner.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🎈</span>
+        <span class="file-name">animated/float-bounce.svg</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">⚛️</span>
+        <span class="file-name">animated/FleetOSLogo.tsx</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📱</span>
+        <span class="file-name">animated/FleetOSLogo.native.tsx</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-section">
+    <h2 class="section-title">🎯 Design Specifications</h2>
+    <ul style="list-style: none; padding: 0;">
+      <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+        <strong>Format:</strong> SVG (Scalable Vector Graphics)
+      </li>
+      <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+        <strong>Primary Colors:</strong> Cyan #06B6D4, Turquoise #22D3EE
+      </li>
+      <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+        <strong>Background:</strong> Dark Navy #0f172a, #1e293b
+      </li>
+      <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+        <strong>Effects:</strong> Permanent glow with multiple drop shadows
+      </li>
+      <li style="padding: 10px 0;">
+        <strong>Typography:</strong> System fonts for maximum compatibility
+      </li>
+    </ul>
+  </div>
+
+  <div class="download-section">
+    <h2>📦 Ready to Use!</h2>
+    <p>All files are in the <strong>fleetos-logos</strong> folder</p>
+    <p>📍 Location: <code style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 5px;">C:\Users\Fotis\fleetos-logos</code></p>
+    <br>
+    <p><strong>To share:</strong> Compress this folder and send via email, cloud storage, or file transfer</p>
+  </div>
+
+  <footer>
+    <p>FleetOS Logo Package · Created October 2025</p>
+    <p>All logo variations included · SVG format · Ready for production</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

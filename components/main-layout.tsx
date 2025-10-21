@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from './app-header';
 import { BottomTabBar } from './bottom-tab-bar';
 import { Colors } from '../utils/design-system';
+import { useThemeColors } from '../contexts/theme-context';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -24,8 +25,10 @@ export function MainLayout({
   scrollable = false,
   scrollViewProps,
 }: MainLayoutProps) {
+  const colors = useThemeColors();
+  
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Persistent App Header */}
       {showHeader && <AppHeader showActions={true} />}
       
@@ -54,7 +57,6 @@ export function MainLayout({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     flex: 1,

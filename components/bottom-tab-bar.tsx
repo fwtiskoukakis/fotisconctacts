@@ -10,6 +10,8 @@ import { BlurView } from 'expo-blur';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../utils/design-system';
+import { FleetOSColors } from '../utils/brand-colors';
+import { useThemeColors, useIsDarkMode } from '../contexts/theme-context';
 
 interface TabItem {
   key: string;
@@ -58,6 +60,8 @@ interface BottomTabBarProps {
 export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const colors = useThemeColors();
+  const isDark = useIsDarkMode();
 
   function handleTabPress(tab: TabItem) {
     if (onTabPress) {
@@ -76,7 +80,7 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
 
   return (
     <View style={styles.container}>
-      <BlurView intensity={80} tint="light" style={styles.blurContainer}>
+      <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={[styles.blurContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
         <View style={styles.tabBar}>
           {tabs.map((tab) => {
             const active = isActive(tab.route);
@@ -92,11 +96,11 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
                   <Ionicons 
                     name={tab.icon} 
                     size={active ? 26 : 24} 
-                    color={active ? Colors.primary : '#8E8E93'} 
+                    color={active ? colors.primary : colors.textSecondary} 
                     style={styles.icon}
                   />
                   <Text 
-                    style={[styles.tabLabel, active && styles.activeTabLabel]}
+                    style={[styles.tabLabel, active && styles.activeTabLabel, { color: active ? colors.primary : colors.textSecondary }]}
                     numberOfLines={1}
                   >
                     {tab.label}
@@ -156,10 +160,8 @@ const styles = StyleSheet.create({
     left: 4,
     right: 4,
     bottom: 4,
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.12)',
   },
   tabContent: {
     alignItems: 'center',
@@ -178,7 +180,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   activeTabLabel: {
-    color: Colors.primary,
     fontWeight: '600',
     fontSize: 11,
   },

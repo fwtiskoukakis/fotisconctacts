@@ -1,14 +1,16 @@
 /**
- * iOS 26 Liquid Glass Design System
- * Centralized design tokens with glass morphism effects
+ * FleetOS Design System
+ * Centralized design tokens with FleetOS branding and glass morphism effects
  */
 
-// iOS 26 System Colors
+import { FleetOSColors } from './brand-colors';
+
+// FleetOS Brand Colors
 export const Colors = {
-  // Primary Brand Colors (iOS Blue)
-  primary: '#007AFF',
-  primaryDark: '#0051D5',
-  primaryLight: '#5AB3FF',
+  // Primary Brand Colors (FleetOS Cyan)
+  primary: FleetOSColors.primary.cyan,
+  primaryDark: FleetOSColors.primary.cyanDark,
+  primaryLight: FleetOSColors.primary.cyanLight,
   
   // Secondary Colors
   secondary: '#5856D6',
@@ -30,10 +32,10 @@ export const Colors = {
   systemBrown: '#A2845E',
   
   // Status Colors
-  success: '#34C759',
-  error: '#FF3B30',
-  warning: '#FF9500',
-  info: '#007AFF',
+  success: FleetOSColors.status.success,
+  error: FleetOSColors.status.error,
+  warning: FleetOSColors.status.warning,
+  info: FleetOSColors.status.info,
   
   // iOS Gray Scale
   systemGray: '#8E8E93',

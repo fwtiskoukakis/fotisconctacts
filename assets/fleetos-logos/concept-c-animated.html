@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>FleetOS Concept C — Animated</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-x: hidden;
+}
+
+h1 {
+  color: #22D3EE;
+  font-size: 36px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  margin-bottom: 50px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.animations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.animation-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(34, 211, 238, 0.2);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.animation-card:hover {
+  border-color: rgba(34, 211, 238, 0.6);
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(34, 211, 238, 0.2);
+}
+
+.animation-title {
+  color: #22D3EE;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.logo-container {
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 16px;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animation 1: Pulse & Glow */
+@keyframes pulse-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.5));
+    transform: scale(1);
+  }
+  50% { 
+    filter: drop-shadow(0 0 30px rgba(34, 211, 238, 1));
+    transform: scale(1.05);
+  }
+}
+
+.anim-pulse svg {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Animation 2: Rotate Continuous */
+@keyframes rotate-continuous {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.anim-rotate svg {
+  animation: rotate-continuous 3s linear infinite;
+  filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.6));
+}
+
+/* Animation 3: Arrow Slide */
+@keyframes arrow-slide {
+  0%, 100% { transform: translateX(0); opacity: 1; }
+  50% { transform: translateX(8px); opacity: 0.7; }
+}
+
+.anim-slide #arrow {
+  animation: arrow-slide 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.anim-slide svg {
+  filter: drop-shadow(0 0 15px rgba(34, 211, 238, 0.5));
+}
+
+/* Animation 4: Morphing Glow */
+@keyframes morph-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.8)) 
+            drop-shadow(0 0 30px rgba(34, 211, 238, 0.4));
+  }
+  33% { 
+    filter: drop-shadow(0 0 25px rgba(34, 211, 238, 1)) 
+            drop-shadow(0 0 50px rgba(6, 182, 212, 0.6));
+  }
+  66% { 
+    filter: drop-shadow(0 0 20px rgba(6, 182, 212, 1)) 
+            drop-shadow(0 0 40px rgba(34, 211, 238, 0.5));
+  }
+}
+
+.anim-morph svg {
+  animation: morph-glow 3s ease-in-out infinite;
+}
+
+/* Animation 5: Loading Effect */
+@keyframes loading-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.anim-loading svg {
+  animation: loading-rotate 2s linear infinite;
+}
+
+.anim-loading #circle {
+  animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+/* Animation 6: Hover Activated */
+.anim-hover svg {
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.3));
+}
+
+.anim-hover:hover svg {
+  transform: rotate(180deg) scale(1.1);
+  filter: drop-shadow(0 0 30px rgba(34, 211, 238, 1));
+}
+
+/* Animation 7: Particle Effect Background */
+@keyframes particle-float {
+  0%, 100% { 
+    transform: translate(0, 0) scale(1);
+    opacity: 0.2;
+  }
+  50% { 
+    transform: translate(10px, -15px) scale(1.2);
+    opacity: 0.5;
+  }
+}
+
+.anim-particles::before,
+.anim-particles::after {
+  content: '';
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.3), transparent);
+  animation: particle-float 4s ease-in-out infinite;
+}
+
+.anim-particles::before {
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.anim-particles::after {
+  bottom: 10%;
+  right: 10%;
+  animation-delay: 2s;
+}
+
+.anim-particles svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.6));
+}
+
+/* Animation 8: Wave Effect */
+@keyframes wave {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.anim-wave {
+  position: relative;
+}
+
+.anim-wave::before,
+.anim-wave::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border: 3px solid rgba(34, 211, 238, 0.6);
+  border-radius: 50%;
+  animation: wave 2s ease-out infinite;
+}
+
+.anim-wave::after {
+  animation-delay: 1s;
+}
+
+.anim-wave svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 15px rgba(34, 211, 238, 0.8));
+}
+
+/* Animation 9: Float & Bounce */
+@keyframes float-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+.anim-float svg {
+  animation: float-bounce 2s ease-in-out infinite;
+  filter: drop-shadow(0 5px 15px rgba(34, 211, 238, 0.4));
+}
+
+/* Best Animation: Combined Effects */
+@keyframes hero-rotate {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes hero-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 20px rgba(34, 211, 238, 0.8))
+            drop-shadow(0 0 40px rgba(6, 182, 212, 0.5))
+            drop-shadow(0 0 60px rgba(34, 211, 238, 0.3));
+  }
+  50% { 
+    filter: drop-shadow(0 0 30px rgba(34, 211, 238, 1))
+            drop-shadow(0 0 60px rgba(6, 182, 212, 0.8))
+            drop-shadow(0 0 90px rgba(34, 211, 238, 0.5));
+  }
+}
+
+.hero-animation {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(34, 211, 238, 0.1));
+  border: 3px solid rgba(34, 211, 238, 0.5);
+  padding: 60px;
+}
+
+.hero-animation .logo-container {
+  min-height: 300px;
+}
+
+.hero-animation svg {
+  animation: hero-rotate 4s ease-in-out infinite, hero-glow 3s ease-in-out infinite;
+}
+
+@media (max-width: 768px) {
+  .animations-grid {
+    grid-template-columns: 1fr;
+  }
+  h1 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<h1>FleetOS — Forward Motion</h1>
+<p class="subtitle">Concept C Animation Showcase</p>
+
+<div class="animations-grid">
+
+  <!-- Hero Animation -->
+  <div class="animation-card hero-animation">
+    <div class="animation-title">🚀 Hero Animation — Best for Landing Pages</div>
+    <div class="logo-container">
+      <svg viewBox="0 0 48 48" width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hero" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <g id="circle">
+          <path fill="url(#hero)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        </g>
+        <g id="arrow">
+          <path fill="url(#hero)" d="M18,20 L36,24 L18,28 Z"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 1 -->
+  <div class="animation-card">
+    <div class="animation-title">Pulse & Glow</div>
+    <div class="logo-container anim-pulse">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g1)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g1)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 2 -->
+  <div class="animation-card">
+    <div class="animation-title">Continuous Rotation</div>
+    <div class="logo-container anim-rotate">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g2)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g2)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 3 -->
+  <div class="animation-card">
+    <div class="animation-title">Arrow Slide</div>
+    <div class="logo-container anim-slide">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g3)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path id="arrow" fill="url(#g3)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 4 -->
+  <div class="animation-card">
+    <div class="animation-title">Morphing Glow</div>
+    <div class="logo-container anim-morph">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g4)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g4)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 5 -->
+  <div class="animation-card">
+    <div class="animation-title">Loading Spinner</div>
+    <div class="logo-container anim-loading">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path id="circle" fill="url(#g5)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g5)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 6 -->
+  <div class="animation-card">
+    <div class="animation-title">Hover Activated (Hover Me!)</div>
+    <div class="logo-container anim-hover">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g6" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g6)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g6)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 7 -->
+  <div class="animation-card">
+    <div class="animation-title">Particle Effect</div>
+    <div class="logo-container anim-particles">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g7" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g7)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g7)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 8 -->
+  <div class="animation-card">
+    <div class="animation-title">Wave Ripple</div>
+    <div class="logo-container anim-wave">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g8" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g8)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g8)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Animation 9 -->
+  <div class="animation-card">
+    <div class="animation-title">Float & Bounce</div>
+    <div class="logo-container anim-float">
+      <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g9" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#06B6D4"/>
+            <stop offset="100%" style="stop-color:#22D3EE"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#g9)" d="M8,24 C8,17.37 13.37,12 20,12 L25,12 L25,16 L20,16 C15.58,16 12,19.58 12,24 C12,28.42 15.58,32 20,32 L25,32 L25,36 L20,36 C13.37,36 8,30.63 8,24 Z"/>
+        <path fill="url(#g9)" d="M18,20 L36,24 L18,28 Z"/>
+      </svg>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

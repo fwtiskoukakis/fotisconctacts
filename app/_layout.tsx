@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initializeAADE } from '../utils/aade-config';
 import { AuthService } from '../services/auth.service';
+import { ThemeProvider } from '../contexts/theme-context';
 
 /**
  * Root layout component with authentication protection
@@ -60,11 +61,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
+        <ThemeProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
           <Stack.Screen name="auth/sign-in" />
           <Stack.Screen name="auth/sign-up" />
           <Stack.Screen name="auth/reset-password" />
@@ -75,8 +77,9 @@ export default function RootLayout() {
           <Stack.Screen name="car-details" />
           <Stack.Screen name="user-management" />
           <Stack.Screen name="aade-settings" />
-          <Stack.Screen name="notifications" />
-        </Stack>
+          <Stack.Screen name="dark-mode-test" />
+          </Stack>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

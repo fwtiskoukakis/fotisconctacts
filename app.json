@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "AGGELOS Rentals",
-    "slug": "aggelos-rentals",
+    "name": "FleetOS",
+    "slug": "fleetos",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/fleetos-logos/icon-192.svg",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "aggelosrentals",
+    "scheme": "fleetos",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/fleetos-logos/icon-192.svg",
       "resizeMode": "contain",
-      "backgroundColor": "#007AFF"
+      "backgroundColor": "#0f172a"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aggelos.rentals",
+      "bundleIdentifier": "com.fleetos.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Χρειαζόμαστε πρόσβαση στην κάμερα για να βγάλετε φωτογραφίες του οχήματος",
         "NSPhotoLibraryUsageDescription": "Χρειαζόμαστε πρόσβαση στη βιβλιοθήκη φωτογραφιών για να αποθηκεύσουμε τις φωτογραφίες του οχήματος",
@@ -25,12 +25,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#007AFF"
+        "foregroundImage": "./assets/fleetos-logos/icon-192.svg",
+        "backgroundColor": "#0f172a"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aggelos.rentals",
+      "package": "com.fleetos.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -44,7 +44,8 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/fleetos-logos/icon-48.svg",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
