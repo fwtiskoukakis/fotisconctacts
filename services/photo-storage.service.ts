@@ -33,7 +33,7 @@ export class PhotoStorageService {
     try {
       // Read file as base64
       const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       // Convert base64 to blob
@@ -91,7 +91,7 @@ export class PhotoStorageService {
   ): Promise<UploadResult> {
     try {
       const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       const blob = this.base64ToBlob(base64, 'image/jpeg');
@@ -144,7 +144,7 @@ export class PhotoStorageService {
   ): Promise<UploadResult> {
     try {
       const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       const blob = this.base64ToBlob(base64, 'image/jpeg');
@@ -197,7 +197,7 @@ export class PhotoStorageService {
   ): Promise<UploadResult> {
     try {
       const base64 = await FileSystem.readAsStringAsync(signatureUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       const blob = this.base64ToBlob(base64, 'image/png');
