@@ -71,7 +71,7 @@ export class VehicleService {
    */
   static async getAllVehicles(): Promise<Vehicle[]> {
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .select('*')
       .order('license_plate', { ascending: true });
 
@@ -88,7 +88,7 @@ export class VehicleService {
    */
   static async getVehicleById(id: string): Promise<Vehicle | null> {
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .select('*')
       .eq('id', id)
       .single();
@@ -109,7 +109,7 @@ export class VehicleService {
    */
   static async getVehicleByPlate(licensePlate: string): Promise<Vehicle | null> {
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .select('*')
       .eq('license_plate', licensePlate)
       .single();
@@ -132,7 +132,7 @@ export class VehicleService {
     const insertData = convertVehicleToInsert(vehicle);
 
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .insert(insertData)
       .select()
       .single();
@@ -172,7 +172,7 @@ export class VehicleService {
     };
 
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -191,7 +191,7 @@ export class VehicleService {
    */
   static async deleteVehicle(id: string): Promise<void> {
     const { error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .delete()
       .eq('id', id);
 
@@ -278,7 +278,7 @@ export class VehicleService {
     const futureDateStr = futureDate.toISOString().split('T')[0];
 
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .select('*')
       .or(`kteo_expiry_date.lte.${futureDateStr},insurance_expiry_date.lte.${futureDateStr}`)
       .order('kteo_expiry_date', { ascending: true });
@@ -296,7 +296,7 @@ export class VehicleService {
    */
   static async searchVehicles(query: string): Promise<Vehicle[]> {
     const { data, error } = await supabase
-      .from('vehicles')
+      .from('cars')
       .select('*')
       .or(`license_plate.ilike.%${query}%,make.ilike.%${query}%,model.ilike.%${query}%`)
       .order('license_plate', { ascending: true });
