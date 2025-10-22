@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthService } from '../services/auth.service';
 import { Colors, Typography, Spacing, Glass, BorderRadius, BlurIntensity } from '../utils/design-system';
 import { FleetOSHeaderLogo } from './fleetos-logo';
-import { useThemeColors, useIsDarkMode, useThemeToggle } from '../contexts/theme-context';
+import { useThemeColors } from '../contexts/theme-context';
 
 interface AppHeaderProps {
   showBack?: boolean;
@@ -24,8 +24,6 @@ interface UserInfo {
 export function AppHeader({ showBack = false, title, showActions = true, onBackPress }: AppHeaderProps) {
   const router = useRouter();
   const colors = useThemeColors();
-  const isDark = useIsDarkMode();
-  const { toggleTheme } = useThemeToggle();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: 'User',
@@ -80,7 +78,7 @@ export function AppHeader({ showBack = false, title, showActions = true, onBackP
 
   return (
     <>
-      <BlurView intensity={BlurIntensity.regular} tint={isDark ? "dark" : "light"} style={[styles.container, { backgroundColor: colors.glass }]}>
+      <BlurView intensity={BlurIntensity.regular} tint="light" style={[styles.container, { backgroundColor: colors.glass }]}>
         <View style={styles.content}>
           {/* Left */}
           {showBack ? (
@@ -99,10 +97,6 @@ export function AppHeader({ showBack = false, title, showActions = true, onBackP
           {/* Right */}
           {showActions && (
             <View style={styles.rightActions}>
-              <TouchableOpacity onPress={toggleTheme} style={styles.actionIcon} activeOpacity={0.6}>
-                <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={colors.text} />
-              </TouchableOpacity>
-              
               <TouchableOpacity onPress={() => router.push('/calendar')} style={styles.actionIcon} activeOpacity={0.6}>
                 <Ionicons name="calendar-outline" size={22} color={colors.text} />
               </TouchableOpacity>

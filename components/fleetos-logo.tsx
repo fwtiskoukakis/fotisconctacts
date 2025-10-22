@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Filter, FeGaussianBlur, FeMerge, FeMergeNode, Rect, Text } from 'react-native-svg';
-import { useIsDarkMode } from '../contexts/theme-context';
 
 interface FleetOSLogoProps {
   variant?: 'horizontal-light' | 'horizontal-dark' | 'icon';
@@ -16,9 +15,8 @@ export const FleetOSLogo: React.FC<FleetOSLogoProps> = ({
   style,
   showText = true,
 }) => {
-  const systemIsDark = useIsDarkMode();
   const isHorizontal = variant.includes('horizontal');
-  const isDark = variant.includes('dark') || (variant === 'horizontal-light' && systemIsDark);
+  const isDark = variant.includes('dark');
   const isIcon = variant === 'icon';
   
   // Calculate dimensions based on variant
@@ -103,8 +101,7 @@ const styles = StyleSheet.create({
 
 // Convenience components for common use cases
 export const FleetOSHeaderLogo: React.FC<Omit<FleetOSLogoProps, 'variant'>> = (props) => {
-  const isDark = useIsDarkMode();
-  return <FleetOSLogo variant={isDark ? "horizontal-dark" : "horizontal-light"} {...props} />;
+  return <FleetOSLogo variant="horizontal-light" {...props} />;
 };
 
 export const FleetOSDarkLogo: React.FC<Omit<FleetOSLogoProps, 'variant'>> = (props) => (

@@ -6,7 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { SimpleGlassCard } from '../components/glass-card';
 import { Colors, Typography, Spacing, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
-import { FleetService, Vehicle, FleetStats } from '../services/fleet.service';
+import { FleetService, Vehicle as FleetVehicle, FleetStats } from '../services/fleet.service';
+import { VehicleService } from '../services/vehicle.service';
+import { Vehicle } from '../models/vehicle.interface';
+import { AuthService } from '../services/auth.service';
 import { OrganizationService } from '../services/organization.service';
 
 export default function FleetManagementScreen() {
@@ -49,6 +52,30 @@ export default function FleetManagementScreen() {
   async function loadFleetData() {
     setLoading(true);
     try {
+      // Try using new VehicleService first
+      try {
+        const vehiclesData = await VehicleService.getAllVehicles();
+        setVehicles(vehiclesData);
+        
+        // Calculate basic stats from vehicles
+        const stats: FleetStats = {
+          totalVehicles: vehiclesData.length,
+          availableVehicles: vehiclesData.filter(v => v.status === 'available').length,
+          rentedVehicles: vehiclesData.filter(v => v.status === 'rented').length,
+          maintenanceVehicles: vehiclesData.filter(v => v.status === 'maintenance').length,
+          retiredVehicles: vehiclesData.filter(v => v.status === 'retired').length,
+          totalFleetValue: 0,
+          averageUtilizationRate: 0,
+          topPerformingVehicles: [],
+          maintenanceAlerts: [],
+        };
+        setFleetStats(stats);
+        return;
+      } catch (vehicleError) {
+        console.log('VehicleService not available, falling back to FleetService');
+      }
+
+      // Fallback to old FleetService if new service fails
       const organization = await OrganizationService.getCurrentOrganization();
       if (!organization) {
         Alert.alert('Σφάλμα', 'Δεν βρέθηκε επιχείρηση.');
@@ -61,7 +88,7 @@ export default function FleetManagementScreen() {
         FleetService.getFleetStats(organization.id),
       ]);
 
-      setVehicles(vehiclesData);
+      setVehicles(vehiclesData as any);
       setFleetStats(statsData);
     } catch (error) {
       console.error('Error loading fleet data:', error);
@@ -78,10 +105,38 @@ export default function FleetManagementScreen() {
     }
 
     try {
-      const organization = await OrganizationService.getCurrentOrganization();
-      if (!organization) return;
+      // Get current user
+      const user = await AuthService.getCurrentUser();
+      if (!user) {
+        Alert.alert('Σφάλμα', 'Πρέπει να είστε συνδεδεμένοι.');
+        return;
+      }
 
-      await FleetService.createVehicle(organization.id, newVehicle);
+      // Create vehicle using new VehicleService
+      const vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'> = {
+        userId: user.id,
+        licensePlate: newVehicle.license_plate,
+        make: newVehicle.make,
+        model: newVehicle.model,
+        year: newVehicle.year,
+        color: newVehicle.color || null,
+        category: newVehicle.category || null,
+        currentMileage: newVehicle.mileage || 0,
+        status: newVehicle.status,
+        insuranceType: newVehicle.insurance_type || null,
+        insuranceExpiryDate: newVehicle.insurance_expiry ? new Date(newVehicle.insurance_expiry) : null,
+        insuranceCompany: newVehicle.insurance_provider || null,
+        insurancePolicyNumber: newVehicle.insurance_policy_number || null,
+        kteoExpiryDate: newVehicle.kteo_expiry ? new Date(newVehicle.kteo_expiry) : null,
+        kteoLastDate: null,
+        tiresFrontDate: null,
+        tiresFrontBrand: null,
+        tiresRearDate: null,
+        tiresRearBrand: null,
+        notes: null,
+      };
+
+      await VehicleService.createVehicle(vehicleData);
       Alert.alert('Επιτυχία', 'Το όχημα προστέθηκε επιτυχώς!');
       setShowAddVehicleModal(false);
       setNewVehicle({
@@ -110,7 +165,7 @@ export default function FleetManagementScreen() {
       loadFleetData();
     } catch (error) {
       console.error('Error adding vehicle:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία προσθήκης οχήματος.');
+      Alert.alert('Σφάλμα', `Αποτυχία προσθήκης οχήματος: ${error instanceof Error ? error.message : 'Άγνωστο σφάλμα'}`);
     }
   }
 

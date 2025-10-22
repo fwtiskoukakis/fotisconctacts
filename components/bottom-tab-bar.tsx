@@ -11,7 +11,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing } from '../utils/design-system';
 import { FleetOSColors } from '../utils/brand-colors';
-import { useThemeColors, useIsDarkMode } from '../contexts/theme-context';
+import { useThemeColors } from '../contexts/theme-context';
 
 interface TabItem {
   key: string;
@@ -61,7 +61,6 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const colors = useThemeColors();
-  const isDark = useIsDarkMode();
 
   function handleTabPress(tab: TabItem) {
     if (onTabPress) {
@@ -80,7 +79,7 @@ export function BottomTabBar({ onTabPress }: BottomTabBarProps) {
 
   return (
     <View style={styles.container}>
-      <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={[styles.blurContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+      <BlurView intensity={80} tint="light" style={[styles.blurContainer, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
         <View style={styles.tabBar}>
           {tabs.map((tab) => {
             const active = isActive(tab.route);

@@ -23,6 +23,8 @@ import { ContractTemplateSelector } from '../components/contract-template-select
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { AuthService } from '../services/auth.service';
 import { ContractTemplateService } from '../services/contract-template.service';
+import { VehicleService } from '../services/vehicle.service';
+import { VehicleDamageHistoryItem } from '../models/vehicle.interface';
 import { format } from 'date-fns';
 import Svg, { Path } from 'react-native-svg';
 
@@ -77,6 +79,8 @@ export default function NewContractScreen() {
   const [clientSignature, setClientSignature] = useState<string>('');
   const [clientSignaturePaths, setClientSignaturePaths] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [previousDamages, setPreviousDamages] = useState<VehicleDamageHistoryItem[]>([]);
+  const [isLoadingVehicle, setIsLoadingVehicle] = useState(false);
 
   // Date picker states
   const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
@@ -116,6 +120,67 @@ export default function NewContractScreen() {
   function handleCreateCustom() {
     setShowTemplateSelector(false);
     // Continue with manual contract creation
+  }
+
+  /**
+   * Handle license plate change and auto-populate vehicle data
+   */
+  async function handleLicensePlateChange(plate: string) {
+    // Update the license plate
+    setCarInfo(prev => ({ ...prev, licensePlate: plate }));
+    
+    // Only search if plate has enough characters
+    if (plate.length < 3) {
+      setPreviousDamages([]);
+      return;
+    }
+    
+    try {
+      setIsLoadingVehicle(true);
+      
+      // Search for vehicle by license plate
+      const vehicle = await VehicleService.getVehicleByPlate(plate);
+      
+      if (vehicle) {
+        // Auto-fill vehicle information
+        const makeModel = `${vehicle.make} ${vehicle.model}`;
+        setCarInfo(prev => ({
+          ...prev,
+          makeModel,
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          licensePlate: plate,
+          category: vehicle.category || undefined,
+          color: vehicle.color || undefined,
+        }));
+        
+        // Update mileage from vehicle
+        setCarCondition(prev => ({
+          ...prev,
+          mileage: vehicle.currentMileage,
+        }));
+        
+        // Load previous damages
+        const damages = await VehicleService.getVehicleDamageHistory(plate, 20);
+        setPreviousDamages(damages);
+        
+        // Show alert with vehicle info
+        Alert.alert(
+          'Όχημα Βρέθηκε',
+          `${makeModel} (${vehicle.year})\n${damages.length} προηγούμενες ζημιές καταγράφηκαν.\n\nΟι ζημιές εμφανίζονται στο διάγραμμα με γκρι χρώμα.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        // No vehicle found - clear previous damages
+        setPreviousDamages([]);
+      }
+    } catch (error) {
+      console.error('Error loading vehicle:', error);
+      setPreviousDamages([]);
+    } finally {
+      setIsLoadingVehicle(false);
+    }
   }
 
   function handleSignatureSave(uri: string) {
@@ -485,12 +550,23 @@ export default function NewContractScreen() {
               value={carInfo.makeModel}
               onChangeText={(text) => setCarInfo({ ...carInfo, makeModel: text })}
             />
-            <TextInput
-              style={[styles.input, styles.halfWidth]}
-              placeholder="Πινακίδα *"
-              value={carInfo.licensePlate}
-              onChangeText={(text) => setCarInfo({ ...carInfo, licensePlate: text })}
-            />
+            <View style={styles.halfWidth}>
+              <TextInput
+                style={styles.input}
+                placeholder="Πινακίδα *"
+                value={carInfo.licensePlate}
+                onChangeText={handleLicensePlateChange}
+                autoCapitalize="characters"
+              />
+              {isLoadingVehicle && (
+                <Text style={styles.helperText}>Αναζήτηση οχήματος...</Text>
+              )}
+              {previousDamages.length > 0 && !isLoadingVehicle && (
+                <Text style={styles.helperTextSuccess}>
+                  ✓ {previousDamages.length} προηγούμενες ζημιές
+                </Text>
+              )}
+            </View>
           </View>
 
           <View style={styles.row}>
@@ -1010,5 +1086,17 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     padding: 20,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  helperTextSuccess: {
+    fontSize: 11,
+    color: '#34C759',
+    marginTop: 4,
+    fontWeight: '600',
   },
 });

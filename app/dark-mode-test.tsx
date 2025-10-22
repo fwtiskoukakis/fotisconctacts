@@ -11,11 +11,11 @@ export default function DarkModeTest() {
     <MainLayout scrollable>
       <View style={styles.container}>
         <Text style={[styles.title, { color: colors.text }]}>
-          FleetOS Dark Mode Test
+          FleetOS Theme Test
         </Text>
         
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          This page demonstrates the dark mode implementation
+          This page demonstrates the light theme implementation
         </Text>
 
         <GlassCard style={styles.card}>
@@ -41,37 +41,28 @@ export default function DarkModeTest() {
             Features
           </Text>
           <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            • Pure black background in dark mode
-          </Text>
-          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            • Theme toggle in header (sun/moon icon)
-          </Text>
-          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            • Automatic system theme detection
+            • Light theme only (dark mode disabled)
           </Text>
           <Text style={[styles.cardText, { color: colors.textSecondary }]}>
             • FleetOS cyan accent color maintained
           </Text>
           <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            • Glass morphism effects adapt to theme
+            • Glass morphism effects optimized for light theme
+          </Text>
+          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
+            • Consistent light theme across all pages
           </Text>
         </GlassCard>
 
         <GlassCard style={styles.card}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>
-            How to Test
+            Current Status
           </Text>
           <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            1. Tap the sun/moon icon in the header
+            Dark mode has been disabled for this app.
           </Text>
           <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            2. Switch your device theme in settings
-          </Text>
-          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            3. Navigate through different pages
-          </Text>
-          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            4. Notice all colors change consistently
+            The app will always use the light theme regardless of system settings.
           </Text>
         </GlassCard>
       </View>

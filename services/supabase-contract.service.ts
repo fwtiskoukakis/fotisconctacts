@@ -116,11 +116,28 @@ export class SupabaseContractService {
   /**
    * Calculate contract status based on dates
    */
-  private static calculateStatus(pickupDate: string, dropoffDate: string): 'active' | 'completed' | 'upcoming' {
+  private static calculateStatus(
+    pickupDate: string, 
+    dropoffDate: string,
+    pickupTime?: string,
+    dropoffTime?: string
+  ): 'active' | 'completed' | 'upcoming' {
     const now = new Date();
+    
+    // Parse pickup datetime
     const pickup = new Date(pickupDate);
+    if (pickupTime) {
+      const [hours, minutes] = pickupTime.split(':').map(Number);
+      pickup.setHours(hours, minutes, 0, 0);
+    }
+    
+    // Parse dropoff datetime
     const dropoff = new Date(dropoffDate);
-
+    if (dropoffTime) {
+      const [hours, minutes] = dropoffTime.split(':').map(Number);
+      dropoff.setHours(hours, minutes, 0, 0);
+    }
+    
     if (now < pickup) {
       return 'upcoming';
     } else if (now >= pickup && now <= dropoff) {
@@ -135,8 +152,13 @@ export class SupabaseContractService {
    * Uses CORRECT schema field names
    */
   private static mapSupabaseToContract(data: any): Contract {
-    // Calculate status from dates (no status field in database)
-    const status = this.calculateStatus(data.pickup_date, data.dropoff_date);
+    // Calculate status from dates and times (no status field in database)
+    const status = this.calculateStatus(
+      data.pickup_date, 
+      data.dropoff_date,
+      data.pickup_time,
+      data.dropoff_time
+    );
 
     return {
       id: data.id,
@@ -202,6 +224,7 @@ export class SupabaseContractService {
       clientSignature: data.client_signature_url || '',
       
       status,
+      observations: data.observations || undefined,
       aadeStatus: data.aade_status || null,
       aadeDclId: data.aade_dcl_id || null,
       createdAt: new Date(data.created_at),
@@ -366,6 +389,9 @@ export class SupabaseContractService {
         mechanical_condition: contract.carCondition.mechanicalCondition,
         condition_notes: contract.carCondition.notes,
         
+        // Additional observations
+        observations: contract.observations || null,
+        
         // Signature
         client_signature_url: contract.clientSignature,
         
@@ -454,6 +480,9 @@ export class SupabaseContractService {
         
         // Signature (should exist)
         client_signature_url: contract.clientSignature,
+        
+        // Additional observations
+        observations: contract.observations || null,
         
         // AADE (these should exist)
         aade_status: contract.aadeStatus || null,

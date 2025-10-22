@@ -7,6 +7,8 @@ import { SimpleGlassCard } from '../components/glass-card';
 import { Colors, Typography, Spacing, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 import { FleetService, Vehicle } from '../services/fleet.service';
+import { VehicleService } from '../services/vehicle.service';
+import { VehicleDamageHistoryItem } from '../models/vehicle.interface';
 import { format } from 'date-fns';
 import { el } from 'date-fns/locale';
 
@@ -16,6 +18,8 @@ export default function VehicleDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'maintenance' | 'performance' | 'accessories'>('overview');
+  const [damageHistory, setDamageHistory] = useState<VehicleDamageHistoryItem[]>([]);
+  const [loadingDamages, setLoadingDamages] = useState(false);
 
   useEffect(() => {
     if (vehicleId) {
@@ -34,12 +38,29 @@ export default function VehicleDetailsScreen() {
     try {
       const vehicleData = await FleetService.getVehicle(vehicleId);
       setVehicle(vehicleData);
+      
+      // Load damage history if we have license plate
+      if (vehicleData?.license_plate) {
+        loadDamageHistory(vehicleData.license_plate);
+      }
     } catch (error) {
       console.error('Error loading vehicle details:', error);
       Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης λεπτομερειών οχήματος.');
       router.back();
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadDamageHistory(licensePlate: string) {
+    setLoadingDamages(true);
+    try {
+      const damages = await VehicleService.getVehicleDamageHistory(licensePlate, 20);
+      setDamageHistory(damages);
+    } catch (error) {
+      console.error('Error loading damage history:', error);
+    } finally {
+      setLoadingDamages(false);
     }
   }
 
@@ -243,6 +264,83 @@ export default function VehicleDetailsScreen() {
               </Text>
             </View>
           </View>
+        </SimpleGlassCard>
+
+        {/* Damage History Section */}
+        <SimpleGlassCard style={styles.infoCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Ιστορικό Ζημιών</Text>
+            <View style={styles.damageBadge}>
+              <Text style={styles.damageBadgeText}>{damageHistory.length}</Text>
+            </View>
+          </View>
+          
+          {loadingDamages ? (
+            <View style={styles.loadingSmall}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <Text style={styles.loadingTextSmall}>Φόρτωση ζημιών...</Text>
+            </View>
+          ) : damageHistory.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={48} color={Colors.success} />
+              <Text style={styles.emptyStateText}>Δεν υπάρχουν καταγεγραμμένες ζημιές</Text>
+              <Text style={styles.emptyStateSubtext}>Το όχημα είναι σε άριστη κατάσταση!</Text>
+            </View>
+          ) : (
+            <View style={styles.damagesList}>
+              {damageHistory.map((damage, index) => (
+                <View key={damage.damageId} style={[
+                  styles.damageItem,
+                  index < damageHistory.length - 1 && styles.damageItemBorder
+                ]}>
+                  <View style={styles.damageHeader}>
+                    <View style={[
+                      styles.severityBadge,
+                      { backgroundColor: 
+                        damage.severity === 'severe' ? Colors.systemRed + '20' :
+                        damage.severity === 'moderate' ? Colors.systemOrange + '20' :
+                        Colors.systemYellow + '20'
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.severityText,
+                        { color: 
+                          damage.severity === 'severe' ? Colors.systemRed :
+                          damage.severity === 'moderate' ? Colors.systemOrange :
+                          Colors.systemYellow
+                        }
+                      ]}>
+                        {damage.severity === 'severe' ? 'Σοβαρή' :
+                         damage.severity === 'moderate' ? 'Μέτρια' :
+                         'Ελαφριά'}
+                      </Text>
+                    </View>
+                    <Text style={styles.damageDate}>
+                      {format(new Date(damage.damageReportedAt), 'dd/MM/yyyy', { locale: el })}
+                    </Text>
+                  </View>
+                  
+                  <Text style={styles.damageDescription}>{damage.description}</Text>
+                  
+                  <View style={styles.damageFooter}>
+                    <View style={styles.damageDetail}>
+                      <Ionicons name="person-outline" size={14} color={Colors.textSecondary} />
+                      <Text style={styles.damageDetailText}>{damage.renterName}</Text>
+                    </View>
+                    <View style={styles.damageDetail}>
+                      <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
+                      <Text style={styles.damageDetailText}>
+                        {damage.viewSide === 'front' ? 'Μπροστά' :
+                         damage.viewSide === 'rear' ? 'Πίσω' :
+                         damage.viewSide === 'left' ? 'Αριστερά' :
+                         'Δεξιά'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </SimpleGlassCard>
       </View>
     );
@@ -837,5 +935,91 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: Spacing.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  damageBadge: {
+    backgroundColor: Colors.primary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  damageBadgeText: {
+    ...Typography.caption,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  loadingSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  loadingTextSmall: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    marginLeft: Spacing.sm,
+  },
+  emptyStateText: {
+    ...Typography.body,
+    color: Colors.text,
+    fontWeight: '600',
+    marginTop: Spacing.md,
+  },
+  emptyStateSubtext: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
+  },
+  damagesList: {
+    gap: Spacing.sm,
+  },
+  damageItem: {
+    paddingVertical: Spacing.md,
+  },
+  damageItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  damageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  severityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  severityText: {
+    ...Typography.caption,
+    fontWeight: '600',
+  },
+  damageDate: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  damageDescription: {
+    ...Typography.body,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  damageFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  damageDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xxs,
+  },
+  damageDetailText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
   },
 });

@@ -89,6 +89,7 @@ export interface Contract {
   status: 'active' | 'completed' | 'upcoming'; // Calculated from rental dates
   aadeStatus?: 'pending' | 'submitted' | 'completed' | 'cancelled' | 'error' | null; // AADE submission status
   aadeDclId?: number | null; // AADE Digital Client ID
+  observations?: string; // Additional notes and observations about the rental
   createdAt: Date;
   tags?: string[];
   categoryId?: string;

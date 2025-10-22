@@ -25,7 +25,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
-  const [theme, setThemeState] = useState<FleetOSColorScheme>('automatic');
+  const [theme, setThemeState] = useState<FleetOSColorScheme>('light');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load saved theme preference
@@ -35,10 +35,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const loadThemePreference = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      if (savedTheme && ['light', 'dark', 'automatic'].includes(savedTheme)) {
-        setThemeState(savedTheme as FleetOSColorScheme);
-      }
+      // Force light theme - ignore any saved preferences
+      setThemeState('light');
     } catch (error) {
       console.error('Error loading theme preference:', error);
     } finally {
@@ -47,26 +45,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   };
 
   const saveThemePreference = async (newTheme: FleetOSColorScheme) => {
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    } catch (error) {
-      console.error('Error saving theme preference:', error);
-    }
+    // Disabled - always use light theme
+    return;
   };
 
   const setTheme = (newTheme: FleetOSColorScheme) => {
-    setThemeState(newTheme);
-    saveThemePreference(newTheme);
+    // Disabled - always use light theme
+    setThemeState('light');
   };
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
+    // Disabled - always use light theme
+    return;
   };
 
-  // Determine actual theme based on preference and system
-  const actualTheme = theme === 'automatic' ? (systemColorScheme || 'light') : theme;
-  const isDark = actualTheme === 'dark';
+  // Force light theme - ignore system preferences
+  const actualTheme = 'light';
+  const isDark = false;
   
   // Get theme values
   const themeValues = getFleetOSTheme(actualTheme);

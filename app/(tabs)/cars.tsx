@@ -8,33 +8,29 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  FlatList,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SimpleGlassCard } from '../../components/glass-card';
 import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
-import { supabase } from '../../utils/supabase';
+import { VehicleService } from '../../services/vehicle.service';
+import { Vehicle, VehicleStatus } from '../../models/vehicle.interface';
 
-interface Car {
-  id: string;
-  makeModel: string;
-  licensePlate: string;
-  year: number;
-  fuelType: string;
-  transmission: string;
-  seats: number;
-  dailyRate: number;
-  isAvailable: boolean;
-}
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 8;
+const NUM_COLUMNS = 2;
+const CARD_WIDTH = (width - (CARD_MARGIN * (NUM_COLUMNS + 1))) / NUM_COLUMNS;
 
 export default function CarsScreen() {
   const router = useRouter();
-  const [cars, setCars] = useState<Car[]>([]);
-  const [filtered, setFiltered] = useState<Car[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [filtered, setFiltered] = useState<Vehicle[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [filter, setFilter] = useState<'all' | 'available' | 'rented' | 'maintenance'>('all');
 
   useEffect(() => {
     loadCars();
@@ -42,39 +38,22 @@ export default function CarsScreen() {
 
   useEffect(() => {
     filterCars();
-  }, [cars, search, filter]);
+  }, [vehicles, search, filter]);
 
   async function loadCars() {
     try {
-      const { data, error } = await supabase
-        .from('cars')
-        .select('id,make_model,license_plate,year,fuel_type,transmission,seats,daily_rate,is_available')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const mapped = data?.map(d => ({
-        id: d.id,
-        makeModel: d.make_model,
-        licensePlate: d.license_plate,
-        year: d.year,
-        fuelType: d.fuel_type,
-        transmission: d.transmission,
-        seats: d.seats,
-        dailyRate: d.daily_rate,
-        isAvailable: d.is_available,
-      })) || [];
-
-      setCars(mapped);
+      const data = await VehicleService.getAllVehicles();
+      setVehicles(data);
     } catch (error) {
-      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης');
+      console.error('Error loading vehicles:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης οχημάτων');
     }
   }
 
-  async function deleteCar(car: Car) {
+  async function deleteVehicle(vehicle: Vehicle) {
     Alert.alert(
       'Επιβεβαίωση Διαγραφής',
-      `Είστε σίγουροι ότι θέλετε να διαγράψετε το αυτοκίνητο "${car.makeModel}" (${car.licensePlate}); Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`,
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε το όχημα "${vehicle.make} ${vehicle.model}" (${vehicle.licensePlate});`,
       [
         { text: 'Ακύρωση', style: 'cancel' },
         {
@@ -82,18 +61,12 @@ export default function CarsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase
-                .from('cars')
-                .delete()
-                .eq('id', car.id);
-
-              if (error) throw error;
-
-              Alert.alert('Επιτυχία', `Το αυτοκίνητο ${car.makeModel} διαγράφηκε επιτυχώς.`);
+              await VehicleService.deleteVehicle(vehicle.id);
+              Alert.alert('Επιτυχία', 'Το όχημα διαγράφηκε επιτυχώς.');
               loadCars();
             } catch (error) {
-              console.error('Error deleting car:', error);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής αυτοκινήτου.');
+              console.error('Error deleting vehicle:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής οχήματος.');
             }
           }
         }
@@ -102,14 +75,16 @@ export default function CarsScreen() {
   }
 
   function filterCars() {
-    let result = cars;
-    if (filter === 'available') result = result.filter(c => c.isAvailable);
-    if (filter === 'unavailable') result = result.filter(c => !c.isAvailable);
+    let result = vehicles;
+    if (filter === 'available') result = result.filter(v => v.status === 'available');
+    if (filter === 'rented') result = result.filter(v => v.status === 'rented');
+    if (filter === 'maintenance') result = result.filter(v => v.status === 'maintenance');
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(c =>
-        c.makeModel.toLowerCase().includes(q) ||
-        c.licensePlate.toLowerCase().includes(q)
+      result = result.filter(v =>
+        v.make.toLowerCase().includes(q) ||
+        v.model.toLowerCase().includes(q) ||
+        v.licensePlate.toLowerCase().includes(q)
       );
     }
     setFiltered(result);
