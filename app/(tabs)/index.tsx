@@ -87,9 +87,9 @@ export default function HomeScreen() {
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
 
-    const active = contracts.filter(c => c.status === 'active').length;
-    const completed = contracts.filter(c => c.status === 'completed').length;
-    const upcoming = contracts.filter(c => c.status === 'upcoming').length;
+    const active = contracts.filter(c => getActualContractStatus(c) === 'active').length;
+    const completed = contracts.filter(c => getActualContractStatus(c) === 'completed').length;
+    const upcoming = contracts.filter(c => getActualContractStatus(c) === 'upcoming').length;
 
     const totalRevenue = contracts.reduce((sum, c) => sum + (c.rentalPeriod.totalCost || 0), 0);
     
@@ -123,9 +123,9 @@ export default function HomeScreen() {
   function filterContracts() {
     let filtered = contracts;
 
-    // Filter by status
+    // Filter by status using actual calculated status
     if (activeFilter !== 'all') {
-      filtered = filtered.filter(c => c.status === activeFilter);
+      filtered = filtered.filter(c => getActualContractStatus(c) === activeFilter);
     }
 
     // Filter by search query
@@ -155,6 +155,54 @@ export default function HomeScreen() {
       month: '2-digit',
       year: 'numeric',
     });
+  }
+
+  function getActualContractStatus(contract: Contract): 'active' | 'completed' | 'upcoming' {
+    try {
+      const now = new Date();
+      
+      // Validate and parse pickup datetime
+      const pickupDate = new Date(contract.rentalPeriod.pickupDate);
+      if (isNaN(pickupDate.getTime())) {
+        console.warn('Invalid pickup date for contract:', contract.id);
+        return contract.status; // Fallback to stored status
+      }
+      
+      const pickupTimeParts = contract.rentalPeriod.pickupTime?.split(':') || ['00', '00'];
+      const pickupHours = parseInt(pickupTimeParts[0]) || 0;
+      const pickupMinutes = parseInt(pickupTimeParts[1]) || 0;
+      pickupDate.setHours(pickupHours, pickupMinutes, 0, 0);
+      
+      // Validate and parse dropoff datetime
+      const dropoffDate = new Date(contract.rentalPeriod.dropoffDate);
+      if (isNaN(dropoffDate.getTime())) {
+        console.warn('Invalid dropoff date for contract:', contract.id);
+        return contract.status; // Fallback to stored status
+      }
+      
+      const dropoffTimeParts = contract.rentalPeriod.dropoffTime?.split(':') || ['23', '59'];
+      const dropoffHours = parseInt(dropoffTimeParts[0]) || 23;
+      const dropoffMinutes = parseInt(dropoffTimeParts[1]) || 59;
+      dropoffDate.setHours(dropoffHours, dropoffMinutes, 0, 0);
+      
+      // Check if dates are valid after setting time
+      if (isNaN(pickupDate.getTime()) || isNaN(dropoffDate.getTime())) {
+        console.warn('Invalid dates after time parsing for contract:', contract.id);
+        return contract.status;
+      }
+      
+      // Determine actual status based on current time
+      if (now < pickupDate) {
+        return 'upcoming';
+      } else if (now >= pickupDate && now <= dropoffDate) {
+        return 'active';
+      } else {
+        return 'completed';
+      }
+    } catch (error) {
+      console.error('Error calculating contract status:', error);
+      return contract.status; // Fallback to stored status on error
+    }
   }
 
   function getStatusColor(status: string): string {
@@ -223,6 +271,8 @@ export default function HomeScreen() {
   }
 
   function renderContractCard(contract: Contract) {
+    const actualStatus = getActualContractStatus(contract);
+    
     return (
       <TouchableOpacity
         key={contract.id}
@@ -233,7 +283,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.contractHeader}>
           <View style={styles.contractHeaderLeft}>
-            <View style={[styles.statusDot, { backgroundColor: getStatusColor(contract.status) }]} />
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(actualStatus) }]} />
             <View style={styles.contractHeaderInfo}>
               <View style={styles.nameRow}>
                 <Text style={styles.contractName} numberOfLines={1}>
@@ -251,9 +301,9 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(contract.status) + '15' }]}>
-            <Text style={[styles.statusBadgeText, { color: getStatusColor(contract.status) }]}>
-              {getStatusLabel(contract.status)}
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(actualStatus) + '15' }]}>
+            <Text style={[styles.statusBadgeText, { color: getStatusColor(actualStatus) }]}>
+              {getStatusLabel(actualStatus)}
             </Text>
           </View>
         </View>
