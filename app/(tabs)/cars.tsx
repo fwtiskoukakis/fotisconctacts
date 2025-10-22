@@ -184,6 +184,17 @@ export default function CarsScreen() {
             console.log(`🔍 DEBUG BMZ1133: status=${vehicle.status}, plate=${vehicle.licensePlate}`);
           }
           
+          // Use the same color logic as vehicle details page
+          function getStatusColor(status: string): string {
+            switch (status) {
+              case 'available': return Colors.success;
+              case 'rented': return Colors.primary;
+              case 'maintenance': return Colors.warning;
+              case 'retired': return Colors.textSecondary;
+              default: return Colors.textSecondary;
+            }
+          }
+          
           if (gridStyle === 'list') {
             return (
               <TouchableOpacity 
@@ -199,8 +210,8 @@ export default function CarsScreen() {
                     {vehicle.category && <Text style={s.listDetail}>Κατηγορία: {vehicle.category}</Text>}
                   </View>
                   <View style={s.listRight}>
-                    <View style={[s.listBadge, { backgroundColor: vehicle.status === 'available' ? Colors.success + '15' : Colors.error + '15' }]}>
-                      <Text style={[s.listBadgeText, { color: vehicle.status === 'available' ? Colors.success : Colors.error }]}>
+                    <View style={[s.listBadge, { backgroundColor: getStatusColor(vehicle.status) + '15' }]}>
+                      <Text style={[s.listBadgeText, { color: getStatusColor(vehicle.status) }]}>
                         {vehicle.status === 'available' ? 'Διαθέσιμο' : vehicle.status === 'rented' ? 'Ενοικιασμένο' : 'Συντήρηση'}
                       </Text>
                     </View>
@@ -227,7 +238,7 @@ export default function CarsScreen() {
             >
               <View style={s.gridCardContent}>
                 <View style={s.gridCardHeader}>
-                  <View style={[s.statusDot, { backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error }]} />
+                  <View style={[s.statusDot, { backgroundColor: getStatusColor(vehicle.status) }]} />
                   <TouchableOpacity
                     style={s.deleteButton}
                     onPress={(e) => {
