@@ -5,6 +5,7 @@
 
 import { supabase } from '../utils/supabase';
 import {  Vehicle, VehicleDamageHistoryItem, VehicleSummary } from '../models/vehicle.interface';
+import { updateVehicleAvailability } from '../utils/vehicle-availability';
 
 /**
  * Converts a database row to a Vehicle object
@@ -307,6 +308,31 @@ export class VehicleService {
     }
 
     return data ? data.map(convertRowToVehicle) : [];
+  }
+
+  /**
+   * Update vehicle availability based on active contracts
+   * Cars with active contracts are marked as 'rented', others as 'available'
+   */
+  static async updateVehicleAvailability(): Promise<void> {
+    return updateVehicleAvailability();
+  }
+
+  /**
+   * Get vehicles with updated availability status
+   * This method automatically updates availability before returning vehicles
+   */
+  static async getAllVehiclesWithUpdatedAvailability(): Promise<Vehicle[]> {
+    try {
+      // First update availability based on active contracts
+      await this.updateVehicleAvailability();
+      
+      // Then return all vehicles with updated status
+      return await this.getAllVehicles();
+    } catch (error) {
+      console.error('Error getting vehicles with updated availability:', error);
+      throw error;
+    }
   }
 }
 

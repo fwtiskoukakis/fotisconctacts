@@ -1,6 +1,7 @@
 import { supabase } from '../utils/supabase';
 import { Contract } from '../models/contract.interface';
 import { PhotoStorageService } from './photo-storage.service';
+import { updateVehicleAvailability } from '../utils/vehicle-availability';
 
 /**
  * Supabase Contract Service
@@ -529,12 +530,21 @@ export class SupabaseContractService {
       // Upload photos if any
       if (contract.photoUris && contract.photoUris.length > 0) {
         try {
-          await PhotoStorageService.uploadContractPhotos(contract.id, contract.photoUris);
+          await PhotoStorageService.saveContractPhotos(contract.id, contract.photoUris);
           console.log(`✅ Uploaded ${contract.photoUris.length} photos for contract ${contract.id}`);
         } catch (error) {
           console.error('Error uploading contract photos:', error);
           // Don't throw, contract is already saved
         }
+      }
+
+      // Update vehicle availability based on active contracts
+      try {
+        await updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract creation');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already saved
       }
 
       return await this.mapSupabaseToContractAsync(savedContract);
@@ -675,12 +685,21 @@ export class SupabaseContractService {
             await PhotoStorageService.deleteContractPhotos(id);
             
             // Upload new photos
-            await PhotoStorageService.uploadContractPhotos(id, localPhotos);
+            await PhotoStorageService.saveContractPhotos(id, localPhotos);
             console.log(`✅ Updated ${localPhotos.length} photos for contract ${id}`);
           } catch (error) {
             console.error('Error updating contract photos:', error);
           }
         }
+      }
+
+      // Update vehicle availability based on active contracts
+      try {
+        await updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract update');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already updated
       }
 
       return await this.mapSupabaseToContractAsync(updatedContract);
@@ -703,6 +722,15 @@ export class SupabaseContractService {
       if (error) {
         console.error('Error deleting contract:', error);
         throw error;
+      }
+
+      // Update vehicle availability based on active contracts
+      try {
+        await updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract deletion');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already deleted
       }
     } catch (error) {
       console.error('Error in deleteContract:', error);
