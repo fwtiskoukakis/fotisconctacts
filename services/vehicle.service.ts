@@ -5,7 +5,7 @@
 
 import { supabase } from '../utils/supabase';
 import {  Vehicle, VehicleDamageHistoryItem, VehicleSummary } from '../models/vehicle.interface';
-import { SupabaseContractService } from './supabase-contract.service';
+import { updateVehicleAvailability } from '../utils/vehicle-availability';
 
 /**
  * Converts a database row to a Vehicle object
@@ -315,63 +315,7 @@ export class VehicleService {
    * Cars with active contracts are marked as 'rented', others as 'available'
    */
   static async updateVehicleAvailability(): Promise<void> {
-    try {
-      console.log('🔄 Updating vehicle availability based on active contracts...');
-      
-      // Get all active contracts
-      const activeContracts = await SupabaseContractService.getActiveContracts();
-      const rentedPlateNumbers = activeContracts.map(contract => 
-        contract.carInfo.licensePlate?.toUpperCase().trim()
-      ).filter(Boolean);
-      
-      console.log(`📋 Found ${activeContracts.length} active contracts`);
-      console.log(`🚗 Rented plate numbers:`, rentedPlateNumbers);
-      
-      // Get all vehicles
-      const { data: vehicles, error: vehiclesError } = await supabase
-        .from('cars')
-        .select('id, license_plate, status');
-      
-      if (vehiclesError) {
-        console.error('Error fetching vehicles:', vehiclesError);
-        throw new Error(`Failed to fetch vehicles: ${vehiclesError.message}`);
-      }
-      
-      if (!vehicles) {
-        console.log('No vehicles found');
-        return;
-      }
-      
-      console.log(`🚗 Vehicle plate numbers in DB:`, vehicles.map(v => v.license_plate));
-      
-      // Update vehicle statuses
-      const updates = vehicles.map(vehicle => {
-        const normalizedVehiclePlate = vehicle.license_plate?.toUpperCase().trim();
-        const isRented = rentedPlateNumbers.includes(normalizedVehiclePlate);
-        const newStatus = isRented ? 'rented' : 'available';
-        
-        // Only update if status actually changed
-        if (vehicle.status !== newStatus) {
-          console.log(`🔄 Updating ${vehicle.license_plate}: ${vehicle.status} → ${newStatus} (plate: ${normalizedVehiclePlate})`);
-          return supabase
-            .from('cars')
-            .update({ status: newStatus })
-            .eq('id', vehicle.id);
-        }
-        return null;
-      }).filter(Boolean);
-      
-      if (updates.length > 0) {
-        await Promise.all(updates);
-        console.log(`✅ Updated ${updates.length} vehicle statuses`);
-      } else {
-        console.log('✅ All vehicle statuses are already up to date');
-      }
-      
-    } catch (error) {
-      console.error('Error updating vehicle availability:', error);
-      throw error;
-    }
+    return updateVehicleAvailability();
   }
 
   /**

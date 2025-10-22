@@ -222,7 +222,14 @@ export default function CarsScreen() {
             >
               <View style={s.gridCardContent}>
                 <View style={s.gridCardHeader}>
-                  <View style={[s.statusDot, { backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error }]} />
+                  <View style={[
+                    s.statusDot, 
+                    { 
+                      backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error,
+                      borderWidth: 1,
+                      borderColor: vehicle.status === 'available' ? Colors.success : Colors.error,
+                    }
+                  ]} />
                   <TouchableOpacity
                     style={s.deleteButton}
                     onPress={(e) => {
@@ -316,9 +323,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   makeModel: { 
     fontSize: 11, 
