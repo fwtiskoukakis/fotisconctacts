@@ -320,7 +320,9 @@ export class VehicleService {
       
       // Get all active contracts
       const activeContracts = await SupabaseContractService.getActiveContracts();
-      const rentedPlateNumbers = activeContracts.map(contract => contract.carInfo.licensePlate);
+      const rentedPlateNumbers = activeContracts.map(contract => 
+        contract.carInfo.licensePlate?.toUpperCase().trim()
+      ).filter(Boolean);
       
       console.log(`📋 Found ${activeContracts.length} active contracts`);
       console.log(`🚗 Rented plate numbers:`, rentedPlateNumbers);
@@ -340,14 +342,17 @@ export class VehicleService {
         return;
       }
       
+      console.log(`🚗 Vehicle plate numbers in DB:`, vehicles.map(v => v.license_plate));
+      
       // Update vehicle statuses
       const updates = vehicles.map(vehicle => {
-        const isRented = rentedPlateNumbers.includes(vehicle.license_plate);
+        const normalizedVehiclePlate = vehicle.license_plate?.toUpperCase().trim();
+        const isRented = rentedPlateNumbers.includes(normalizedVehiclePlate);
         const newStatus = isRented ? 'rented' : 'available';
         
         // Only update if status actually changed
         if (vehicle.status !== newStatus) {
-          console.log(`🔄 Updating ${vehicle.license_plate}: ${vehicle.status} → ${newStatus}`);
+          console.log(`🔄 Updating ${vehicle.license_plate}: ${vehicle.status} → ${newStatus} (plate: ${normalizedVehiclePlate})`);
           return supabase
             .from('cars')
             .update({ status: newStatus })
