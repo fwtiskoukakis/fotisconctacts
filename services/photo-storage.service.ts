@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '../utils/supabase';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system/legacy'; // Still needed for getInfoAsync
 
 export interface UploadResult {
   url: string;
@@ -31,24 +31,18 @@ export class PhotoStorageService {
     index: number
   ): Promise<UploadResult> {
     try {
-      // Read file as base64
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: 'base64',
-      });
-
-      // Convert base64 to Blob using fetch API (React Native compatible)
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      
       // Generate unique filename
       const timestamp = Date.now();
       const fileName = `${contractId}/photo_${index}_${timestamp}.jpg`;
       
+      // Create a file Blob from URI
+      const fileResponse = await fetch(photoUri);
+      const fileBlob = await fileResponse.blob();
+      
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(this.BUCKET_CONTRACT_PHOTOS)
-        .upload(fileName, blob, {
+        .upload(fileName, fileBlob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false,
@@ -92,21 +86,16 @@ export class PhotoStorageService {
     photoType: string = 'general'
   ): Promise<UploadResult> {
     try {
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: 'base64',
-      });
-
-      // Convert base64 to Blob using fetch API (React Native compatible)
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      
       const timestamp = Date.now();
       const fileName = `${vehicleId}/${photoType}_${timestamp}.jpg`;
       
+      // Create a file Blob from URI
+      const fileResponse = await fetch(photoUri);
+      const fileBlob = await fileResponse.blob();
+      
       const { data, error } = await supabase.storage
         .from(this.BUCKET_CAR_PHOTOS)
-        .upload(fileName, blob, {
+        .upload(fileName, fileBlob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false,
@@ -148,21 +137,16 @@ export class PhotoStorageService {
     photoUri: string
   ): Promise<UploadResult> {
     try {
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: 'base64',
-      });
-
-      // Convert base64 to Blob using fetch API (React Native compatible)
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      
       const timestamp = Date.now();
       const fileName = `${vehicleId}/damage_${damageId}_${timestamp}.jpg`;
       
+      // Create a file Blob from URI
+      const fileResponse = await fetch(photoUri);
+      const fileBlob = await fileResponse.blob();
+      
       const { data, error } = await supabase.storage
         .from(this.BUCKET_CAR_PHOTOS)
-        .upload(fileName, blob, {
+        .upload(fileName, fileBlob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false,
@@ -204,21 +188,16 @@ export class PhotoStorageService {
     signatureType: 'user' | 'client' = 'client'
   ): Promise<UploadResult> {
     try {
-      const base64 = await FileSystem.readAsStringAsync(signatureUri, {
-        encoding: 'base64',
-      });
-
-      // Convert base64 to Blob using fetch API (React Native compatible)
-      const dataUrl = `data:image/png;base64,${base64}`;
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      
       const timestamp = Date.now();
       const fileName = `${userId}/${signatureType}_signature_${timestamp}.png`;
       
+      // Create a file Blob from URI  
+      const fileResponse = await fetch(signatureUri);
+      const fileBlob = await fileResponse.blob();
+      
       const { data, error } = await supabase.storage
         .from(this.BUCKET_SIGNATURES)
-        .upload(fileName, blob, {
+        .upload(fileName, fileBlob, {
           contentType: 'image/png',
           cacheControl: '3600',
           upsert: false,
