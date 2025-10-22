@@ -529,7 +529,7 @@ export class SupabaseContractService {
       // Upload photos if any
       if (contract.photoUris && contract.photoUris.length > 0) {
         try {
-          await PhotoStorageService.uploadContractPhotos(contract.id, contract.photoUris);
+          await PhotoStorageService.saveContractPhotos(contract.id, contract.photoUris);
           console.log(`✅ Uploaded ${contract.photoUris.length} photos for contract ${contract.id}`);
         } catch (error) {
           console.error('Error uploading contract photos:', error);
@@ -675,7 +675,7 @@ export class SupabaseContractService {
             await PhotoStorageService.deleteContractPhotos(id);
             
             // Upload new photos
-            await PhotoStorageService.uploadContractPhotos(id, localPhotos);
+            await PhotoStorageService.saveContractPhotos(id, localPhotos);
             console.log(`✅ Updated ${localPhotos.length} photos for contract ${id}`);
           } catch (error) {
             console.error('Error updating contract photos:', error);
