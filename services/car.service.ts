@@ -13,6 +13,7 @@ import { Car, CarSummary } from '../models/car.interface';
 function convertRowToCar(row: any): Car {
   return {
     id: row.id,
+    userId: row.user_id,
     make: row.make,
     model: row.model,
     makeModel: row.make_model,
@@ -35,6 +36,24 @@ function convertRowToCar(row: any): Car {
     category: row.category,
     status: row.status,
     type: row.type,
+    
+    // KTEO fields
+    kteoLastDate: row.kteo_last_date ? new Date(row.kteo_last_date) : null,
+    kteoExpiryDate: row.kteo_expiry_date ? new Date(row.kteo_expiry_date) : null,
+    
+    // Insurance fields
+    insuranceExpiryDate: row.insurance_expiry_date ? new Date(row.insurance_expiry_date) : null,
+    insuranceCompany: row.insurance_company,
+    insurancePolicyNumber: row.insurance_policy_number,
+    
+    // Tire fields
+    tiresFrontDate: row.tires_front_date ? new Date(row.tires_front_date) : null,
+    tiresFrontBrand: row.tires_front_brand,
+    tiresRearDate: row.tires_rear_date ? new Date(row.tires_rear_date) : null,
+    tiresRearBrand: row.tires_rear_brand,
+    
+    // Notes
+    notes: row.notes,
   };
 }
 
@@ -43,6 +62,7 @@ function convertRowToCar(row: any): Car {
  */
 function convertCarToInsert(car: Omit<Car, 'id' | 'makeModel' | 'createdAt' | 'updatedAt'>): any {
   return {
+    user_id: car.userId,
     make: car.make,
     model: car.model,
     year: car.year,
@@ -62,6 +82,24 @@ function convertCarToInsert(car: Omit<Car, 'id' | 'makeModel' | 'createdAt' | 'u
     category: car.category,
     status: car.status,
     type: car.type,
+    
+    // KTEO fields
+    kteo_last_date: car.kteoLastDate ? car.kteoLastDate.toISOString().split('T')[0] : null,
+    kteo_expiry_date: car.kteoExpiryDate ? car.kteoExpiryDate.toISOString().split('T')[0] : null,
+    
+    // Insurance fields
+    insurance_expiry_date: car.insuranceExpiryDate ? car.insuranceExpiryDate.toISOString().split('T')[0] : null,
+    insurance_company: car.insuranceCompany,
+    insurance_policy_number: car.insurancePolicyNumber,
+    
+    // Tire fields
+    tires_front_date: car.tiresFrontDate ? car.tiresFrontDate.toISOString().split('T')[0] : null,
+    tires_front_brand: car.tiresFrontBrand,
+    tires_rear_date: car.tiresRearDate ? car.tiresRearDate.toISOString().split('T')[0] : null,
+    tires_rear_brand: car.tiresRearBrand,
+    
+    // Notes
+    notes: car.notes,
   };
 }
 
@@ -150,6 +188,7 @@ export class CarService {
    */
   static async updateCar(id: string, updates: Partial<Omit<Car, 'id' | 'makeModel' | 'createdAt'>>): Promise<Car> {
     const updateData: any = {
+      ...(updates.userId !== undefined && { user_id: updates.userId }),
       ...(updates.make && { make: updates.make }),
       ...(updates.model && { model: updates.model }),
       ...(updates.year !== undefined && { year: updates.year }),
@@ -169,6 +208,24 @@ export class CarService {
       ...(updates.category !== undefined && { category: updates.category }),
       ...(updates.status !== undefined && { status: updates.status }),
       ...(updates.type !== undefined && { type: updates.type }),
+      
+      // KTEO fields
+      ...(updates.kteoLastDate !== undefined && { kteo_last_date: updates.kteoLastDate ? updates.kteoLastDate.toISOString().split('T')[0] : null }),
+      ...(updates.kteoExpiryDate !== undefined && { kteo_expiry_date: updates.kteoExpiryDate ? updates.kteoExpiryDate.toISOString().split('T')[0] : null }),
+      
+      // Insurance fields
+      ...(updates.insuranceExpiryDate !== undefined && { insurance_expiry_date: updates.insuranceExpiryDate ? updates.insuranceExpiryDate.toISOString().split('T')[0] : null }),
+      ...(updates.insuranceCompany !== undefined && { insurance_company: updates.insuranceCompany }),
+      ...(updates.insurancePolicyNumber !== undefined && { insurance_policy_number: updates.insurancePolicyNumber }),
+      
+      // Tire fields
+      ...(updates.tiresFrontDate !== undefined && { tires_front_date: updates.tiresFrontDate ? updates.tiresFrontDate.toISOString().split('T')[0] : null }),
+      ...(updates.tiresFrontBrand !== undefined && { tires_front_brand: updates.tiresFrontBrand }),
+      ...(updates.tiresRearDate !== undefined && { tires_rear_date: updates.tiresRearDate ? updates.tiresRearDate.toISOString().split('T')[0] : null }),
+      ...(updates.tiresRearBrand !== undefined && { tires_rear_brand: updates.tiresRearBrand }),
+      
+      // Notes
+      ...(updates.notes !== undefined && { notes: updates.notes }),
     };
 
     const { data, error } = await supabase

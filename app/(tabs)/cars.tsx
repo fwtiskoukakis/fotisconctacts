@@ -40,6 +40,16 @@ export default function CarsScreen() {
     dailyRate: 0,
     category: '',
     type: 'Car',
+    kteoLastDate: null as Date | null,
+    kteoExpiryDate: null as Date | null,
+    insuranceExpiryDate: null as Date | null,
+    insuranceCompany: '',
+    insurancePolicyNumber: '',
+    tiresFrontDate: null as Date | null,
+    tiresFrontBrand: '',
+    tiresRearDate: null as Date | null,
+    tiresRearBrand: '',
+    notes: '',
   });
 
   useEffect(() => {
@@ -74,6 +84,16 @@ export default function CarsScreen() {
       dailyRate: 0,
       category: '',
       type: 'Car',
+      kteoLastDate: null,
+      kteoExpiryDate: null,
+      insuranceExpiryDate: null,
+      insuranceCompany: '',
+      insurancePolicyNumber: '',
+      tiresFrontDate: null,
+      tiresFrontBrand: '',
+      tiresRearDate: null,
+      tiresRearBrand: '',
+      notes: '',
     });
     setShowModal(true);
   }
@@ -92,6 +112,16 @@ export default function CarsScreen() {
       dailyRate: car.dailyRate || 0,
       category: car.category || '',
       type: car.type || 'Car',
+      kteoLastDate: car.kteoLastDate || null,
+      kteoExpiryDate: car.kteoExpiryDate || null,
+      insuranceExpiryDate: car.insuranceExpiryDate || null,
+      insuranceCompany: car.insuranceCompany || '',
+      insurancePolicyNumber: car.insurancePolicyNumber || '',
+      tiresFrontDate: car.tiresFrontDate || null,
+      tiresFrontBrand: car.tiresFrontBrand || '',
+      tiresRearDate: car.tiresRearDate || null,
+      tiresRearBrand: car.tiresRearBrand || '',
+      notes: car.notes || '',
     });
     setShowModal(true);
   }
@@ -330,6 +360,123 @@ export default function CarsScreen() {
                   keyboardType="numeric"
                 />
               </View>
+            </View>
+
+            {/* KTEO Section */}
+            <View style={s.formSection}>
+              <Text style={[s.inputLabel, { fontSize: 16, marginTop: 8 }]}>KTEO</Text>
+            </View>
+            <View style={s.formRow}>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Τελευταίο KTEO</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.kteoLastDate ? formData.kteoLastDate.toISOString().split('T')[0] : ''}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, kteoLastDate: text ? new Date(text) : null }))}
+                />
+              </View>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Λήξη KTEO</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.kteoExpiryDate ? formData.kteoExpiryDate.toISOString().split('T')[0] : ''}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, kteoExpiryDate: text ? new Date(text) : null }))}
+                />
+              </View>
+            </View>
+
+            {/* Insurance Section */}
+            <View style={s.formSection}>
+              <Text style={[s.inputLabel, { fontSize: 16, marginTop: 8 }]}>Ασφάλεια</Text>
+            </View>
+            <View style={s.formSection}>
+              <Text style={s.inputLabel}>Ασφαλιστική Εταιρεία</Text>
+              <TextInput
+                style={s.input}
+                value={formData.insuranceCompany}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, insuranceCompany: text }))}
+                placeholder="π.χ. Groupama"
+              />
+            </View>
+            <View style={s.formRow}>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Αριθμός Ασφαλιστηρίου</Text>
+                <TextInput
+                  style={s.input}
+                  value={formData.insurancePolicyNumber}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, insurancePolicyNumber: text }))}
+                  placeholder="Policy #"
+                />
+              </View>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Λήξη Ασφάλειας</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.insuranceExpiryDate ? formData.insuranceExpiryDate.toISOString().split('T')[0] : ''}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, insuranceExpiryDate: text ? new Date(text) : null }))}
+                />
+              </View>
+            </View>
+
+            {/* Tires Section */}
+            <View style={s.formSection}>
+              <Text style={[s.inputLabel, { fontSize: 16, marginTop: 8 }]}>Λάστιχα</Text>
+            </View>
+            <View style={s.formRow}>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Μπροστινά - Ημερομηνία</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.tiresFrontDate ? formData.tiresFrontDate.toISOString().split('T')[0] : ''}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, tiresFrontDate: text ? new Date(text) : null }))}
+                />
+              </View>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Μπροστινά - Μάρκα</Text>
+                <TextInput
+                  style={s.input}
+                  value={formData.tiresFrontBrand}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, tiresFrontBrand: text }))}
+                  placeholder="π.χ. Michelin"
+                />
+              </View>
+            </View>
+            <View style={s.formRow}>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Πίσω - Ημερομηνία</Text>
+                <TextInput
+                  style={s.input}
+                  placeholder="YYYY-MM-DD"
+                  value={formData.tiresRearDate ? formData.tiresRearDate.toISOString().split('T')[0] : ''}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, tiresRearDate: text ? new Date(text) : null }))}
+                />
+              </View>
+              <View style={[s.formSection, { flex: 1 }]}>
+                <Text style={s.inputLabel}>Πίσω - Μάρκα</Text>
+                <TextInput
+                  style={s.input}
+                  value={formData.tiresRearBrand}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, tiresRearBrand: text }))}
+                  placeholder="π.χ. Bridgestone"
+                />
+              </View>
+            </View>
+
+            {/* Notes Section */}
+            <View style={s.formSection}>
+              <Text style={s.inputLabel}>Σημειώσεις</Text>
+              <TextInput
+                style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                value={formData.notes}
+                onChangeText={(text) => setFormData(prev => ({ ...prev, notes: text }))}
+                placeholder="Προσθέστε τυχόν παρατηρήσεις..."
+                multiline
+                numberOfLines={4}
+              />
             </View>
           </ScrollView>
         </SafeAreaView>

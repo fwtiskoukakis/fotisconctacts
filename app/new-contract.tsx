@@ -23,8 +23,7 @@ import { ContractTemplateSelector } from '../components/contract-template-select
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { AuthService } from '../services/auth.service';
 import { ContractTemplateService } from '../services/contract-template.service';
-import { VehicleService } from '../services/vehicle.service';
-import { VehicleDamageHistoryItem } from '../models/vehicle.interface';
+import { CarService } from '../services/car.service';
 import { format } from 'date-fns';
 import Svg, { Path } from 'react-native-svg';
 
@@ -80,7 +79,7 @@ export default function NewContractScreen() {
   const [clientSignaturePaths, setClientSignaturePaths] = useState<string[]>([]);
   const [observations, setObservations] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [previousDamages, setPreviousDamages] = useState<VehicleDamageHistoryItem[]>([]);
+  const [previousDamages, setPreviousDamages] = useState<any[]>([]);
   const [isLoadingVehicle, setIsLoadingVehicle] = useState(false);
 
   // Date picker states
@@ -139,41 +138,34 @@ export default function NewContractScreen() {
     try {
       setIsLoadingVehicle(true);
       
-      // Search for vehicle by license plate
-      const vehicle = await VehicleService.getVehicleByPlate(plate);
+      // Search for car by license plate
+      const car = await CarService.getCarByPlate(plate);
       
-      if (vehicle) {
-        // Auto-fill vehicle information
-        const makeModel = `${vehicle.make} ${vehicle.model}`;
+      if (car) {
+        // Auto-fill car information
+        const makeModel = `${car.make} ${car.model}`;
         setCarInfo(prev => ({
           ...prev,
           makeModel,
-          make: vehicle.make,
-          model: vehicle.model,
-          year: vehicle.year,
+          make: car.make,
+          model: car.model,
+          year: car.year || new Date().getFullYear(),
           licensePlate: plate,
-          category: vehicle.category || undefined,
-          color: vehicle.color || undefined,
+          category: car.category || undefined,
+          color: car.color || undefined,
         }));
         
-        // Update mileage from vehicle
-        setCarCondition(prev => ({
-          ...prev,
-          mileage: vehicle.currentMileage,
-        }));
+        // TODO: Load previous damages from damage_points table by license plate
+        setPreviousDamages([]);
         
-        // Load previous damages
-        const damages = await VehicleService.getVehicleDamageHistory(plate, 20);
-        setPreviousDamages(damages);
-        
-        // Show alert with vehicle info
+        // Show alert with car info
         Alert.alert(
           'Όχημα Βρέθηκε',
-          `${makeModel} (${vehicle.year})\n${damages.length} προηγούμενες ζημιές καταγράφηκαν.\n\nΟι ζημιές εμφανίζονται στο διάγραμμα με γκρι χρώμα.`,
+          `${makeModel} (${car.year})`,
           [{ text: 'OK' }]
         );
       } else {
-        // No vehicle found - clear previous damages
+        // No car found - clear previous damages
         setPreviousDamages([]);
       }
     } catch (error) {

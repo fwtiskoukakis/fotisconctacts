@@ -8,6 +8,7 @@ export type Transmission = 'manual' | 'automatic';
 
 export interface Car {
   id: string;
+  userId?: string | null;
   make: string;
   model: string;
   makeModel: string; // Generated field: make + ' ' + model
@@ -30,6 +31,24 @@ export interface Car {
   category?: string | null;
   status?: CarStatus | null;
   type?: string | null;
+  
+  // KTEO Information (from vehicles table)
+  kteoLastDate?: Date | null;
+  kteoExpiryDate?: Date | null;
+  
+  // Insurance Information (enhanced from vehicles table)
+  insuranceExpiryDate?: Date | null;
+  insuranceCompany?: string | null;
+  insurancePolicyNumber?: string | null;
+  
+  // Tire Information (from vehicles table)
+  tiresFrontDate?: Date | null;
+  tiresFrontBrand?: string | null;
+  tiresRearDate?: Date | null;
+  tiresRearBrand?: string | null;
+  
+  // Notes (from vehicles table)
+  notes?: string | null;
 }
 
 export interface CarSummary {
