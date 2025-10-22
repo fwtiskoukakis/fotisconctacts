@@ -7,15 +7,15 @@ import { SimpleGlassCard } from '../components/glass-card';
 import { Colors, Typography, Spacing, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 import { FleetService, Vehicle as FleetVehicle, FleetStats } from '../services/fleet.service';
-import { VehicleService } from '../services/vehicle.service';
-import { Vehicle } from '../models/vehicle.interface';
+import { CarService } from '../services/car.service';
+import { Car } from '../models/car.interface';
 import { AuthService } from '../services/auth.service';
 import { OrganizationService } from '../services/organization.service';
 
 export default function FleetManagementScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<Car[]>([]);
   const [fleetStats, setFleetStats] = useState<FleetStats | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'available' | 'rented' | 'maintenance' | 'retired'>('all');
@@ -52,9 +52,9 @@ export default function FleetManagementScreen() {
   async function loadFleetData() {
     setLoading(true);
     try {
-      // Try using new VehicleService first
+      // Try using CarService first
       try {
-        const vehiclesData = await VehicleService.getAllVehicles();
+        const vehiclesData = await CarService.getAllCars();
         setVehicles(vehiclesData);
         
         // Calculate basic stats from vehicles
@@ -71,8 +71,8 @@ export default function FleetManagementScreen() {
         };
         setFleetStats(stats);
         return;
-      } catch (vehicleError) {
-        console.log('VehicleService not available, falling back to FleetService');
+      } catch (carError) {
+        console.log('CarService error, falling back to FleetService:', carError);
       }
 
       // Fallback to old FleetService if new service fails
@@ -112,8 +112,8 @@ export default function FleetManagementScreen() {
         return;
       }
 
-      // Create vehicle using new VehicleService
-      const vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'> = {
+      // Create car using CarService
+      const carData: Omit<Car, 'id' | 'makeModel' | 'createdAt' | 'updatedAt'> = {
         userId: user.id,
         licensePlate: newVehicle.license_plate,
         make: newVehicle.make,
@@ -121,9 +121,13 @@ export default function FleetManagementScreen() {
         year: newVehicle.year,
         color: newVehicle.color || null,
         category: newVehicle.category || null,
-        currentMileage: newVehicle.mileage || 0,
+        fuelType: 'gasoline',
+        transmission: 'manual',
+        seats: 5,
+        dailyRate: newVehicle.daily_rate || 0,
+        isAvailable: true,
         status: newVehicle.status,
-        insuranceType: newVehicle.insurance_type || null,
+        type: 'Car',
         insuranceExpiryDate: newVehicle.insurance_expiry ? new Date(newVehicle.insurance_expiry) : null,
         insuranceCompany: newVehicle.insurance_provider || null,
         insurancePolicyNumber: newVehicle.insurance_policy_number || null,
@@ -136,7 +140,7 @@ export default function FleetManagementScreen() {
         notes: null,
       };
 
-      await VehicleService.createVehicle(vehicleData);
+      await CarService.createCar(carData);
       Alert.alert('Επιτυχία', 'Το όχημα προστέθηκε επιτυχώς!');
       setShowAddVehicleModal(false);
       setNewVehicle({
@@ -215,7 +219,7 @@ export default function FleetManagementScreen() {
     });
   }
 
-  function renderVehicleCard(vehicle: Vehicle) {
+  function renderVehicleCard(vehicle: Car) {
     return (
       <SimpleGlassCard key={vehicle.id} style={styles.vehicleCard}>
         <TouchableOpacity onPress={() => router.push(`/vehicle-details?vehicleId=${vehicle.id}`)}>
