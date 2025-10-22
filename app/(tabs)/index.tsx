@@ -314,14 +314,14 @@ export default function HomeScreen() {
             <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.detailLabel}>Παραλαβή:</Text>
             <Text style={styles.detailValue}>
-              {formatDate(contract.rentalPeriod.pickupDate)}
+              {new Date(contract.rentalPeriod.pickupDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} {contract.rentalPeriod.pickupTime}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.detailLabel}>Επιστροφή:</Text>
             <Text style={styles.detailValue}>
-              {formatDate(contract.rentalPeriod.dropoffDate)}
+              {new Date(contract.rentalPeriod.dropoffDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} {contract.rentalPeriod.dropoffTime}
             </Text>
           </View>
           <View style={styles.detailRow}>
