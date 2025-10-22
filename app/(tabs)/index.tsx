@@ -9,6 +9,7 @@ import {
   TextInput,
   ScrollView,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { SimpleGlassCard } from '../../components/glass-card';
 import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
 import { getAADEStatusMessage } from '../../utils/aade-contract-helper';
+import { FleetOSIcon } from '../../components/fleetos-logo';
 
 const { width } = Dimensions.get('window');
 
@@ -173,6 +175,14 @@ export default function HomeScreen() {
     }
   }
 
+  function handlePhoneCall(phoneNumber: string, e: any) {
+    e.stopPropagation();
+    const phone = phoneNumber.replace(/\s/g, ''); // Remove spaces
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      Alert.alert('Σφάλμα', 'Δεν είναι δυνατή η κλήση');
+    });
+  }
+
   function renderStatsCard(icon: any, label: string, value: string | number, color: string, onPress?: () => void) {
     return (
       <TouchableOpacity
@@ -225,9 +235,17 @@ export default function HomeScreen() {
           <View style={styles.contractHeaderLeft}>
             <View style={[styles.statusDot, { backgroundColor: getStatusColor(contract.status) }]} />
             <View style={styles.contractHeaderInfo}>
-              <Text style={styles.contractName} numberOfLines={1}>
-                {contract.renterInfo.fullName}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.contractName} numberOfLines={1}>
+                  {contract.renterInfo.fullName}
+                </Text>
+                <TouchableOpacity
+                  style={styles.phoneButton}
+                  onPress={(e) => handlePhoneCall(contract.renterInfo.phoneNumber || contract.renterInfo.phone, e)}
+                >
+                  <Ionicons name="call" size={14} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.contractCar} numberOfLines={1}>
                 {contract.carInfo.makeModel} • {contract.carInfo.licensePlate}
               </Text>
@@ -309,7 +327,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/new-contract')}
             activeOpacity={0.8}
           >
-            <Ionicons name="add-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <FleetOSIcon variant="icon" size={24} color="#FFFFFF" />
             <Text style={styles.emptyButtonText}>Νέο Συμβόλαιο</Text>
           </TouchableOpacity>
         )}
@@ -613,11 +631,25 @@ const styles = StyleSheet.create({
   contractHeaderInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   contractName: {
     fontSize: 14,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 2,
+    flex: 1,
+  },
+  phoneButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   contractCar: {
     fontSize: 12,
@@ -746,6 +778,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: 12,
     alignItems: 'center',
+    gap: 10,
     ...Shadows.sm,
   },
   emptyButtonText: {

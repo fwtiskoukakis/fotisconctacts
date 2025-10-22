@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { Contract } from '../models/contract.interface';
+import { PhotoStorageService } from './photo-storage.service';
 
 /**
  * Supabase Contract Service
@@ -50,7 +51,7 @@ export class SupabaseContractService {
         return null;
       }
 
-      return this.mapSupabaseToContract(contract);
+      return await this.mapSupabaseToContractAsync(contract);
     } catch (error) {
       console.error('Error in getContractById:', error);
       return null;
@@ -151,7 +152,7 @@ export class SupabaseContractService {
    * Map Supabase contract to our Contract interface
    * Uses CORRECT schema field names
    */
-  private static mapSupabaseToContract(data: any): Contract {
+  private static async mapSupabaseToContractAsync(data: any): Promise<Contract> {
     // Calculate status from dates and times (no status field in database)
     const status = this.calculateStatus(
       data.pickup_date, 
@@ -159,6 +160,16 @@ export class SupabaseContractService {
       data.pickup_time,
       data.dropoff_time
     );
+
+    // Fetch photos for this contract
+    let photoUrls: string[] = [];
+    try {
+      const photos = await PhotoStorageService.getContractPhotos(data.id);
+      photoUrls = photos.map(p => p.photo_url);
+    } catch (error) {
+      console.error('Error fetching contract photos:', error);
+      photoUrls = [];
+    }
 
     return {
       id: data.id,
@@ -220,7 +231,89 @@ export class SupabaseContractService {
         timestamp: new Date(dp.created_at),
       })) || [],
       
-      photoUris: [], // Photos stored separately in storage
+      photoUris: photoUrls,
+      clientSignature: data.client_signature_url || '',
+      
+      status,
+      observations: data.observations || undefined,
+      aadeStatus: data.aade_status || null,
+      aadeDclId: data.aade_dcl_id || null,
+      createdAt: new Date(data.created_at),
+    };
+  }
+  
+  /**
+   * Synchronous version for backwards compatibility
+   */
+  private static mapSupabaseToContract(data: any): Contract {
+    const status = this.calculateStatus(
+      data.pickup_date, 
+      data.dropoff_date,
+      data.pickup_time,
+      data.dropoff_time
+    );
+
+    return {
+      id: data.id,
+      userId: data.user_id,
+      
+      renterInfo: {
+        fullName: data.renter_full_name,
+        idNumber: data.renter_id_number,
+        taxId: data.renter_tax_id,
+        driverLicenseNumber: data.renter_driver_license_number,
+        phoneNumber: data.renter_phone_number,
+        phone: data.renter_phone_number,
+        email: data.renter_email || '',
+        address: data.renter_address,
+      },
+      
+      rentalPeriod: {
+        pickupDate: new Date(data.pickup_date),
+        pickupTime: data.pickup_time,
+        pickupLocation: data.pickup_location,
+        dropoffDate: new Date(data.dropoff_date),
+        dropoffTime: data.dropoff_time,
+        dropoffLocation: data.dropoff_location,
+        isDifferentDropoffLocation: data.is_different_dropoff_location || false,
+        totalCost: parseFloat(data.total_cost) || 0,
+        depositAmount: parseFloat(data.deposit_amount) || 0,
+        insuranceCost: parseFloat(data.insurance_cost) || 0,
+      },
+      
+      carInfo: {
+        makeModel: data.car_make_model,
+        make: data.car_make_model?.split(' ')[0] || '',
+        model: data.car_make_model?.split(' ').slice(1).join(' ') || '',
+        year: data.car_year,
+        licensePlate: data.car_license_plate,
+        mileage: data.car_mileage,
+        category: data.car_category,
+        color: data.car_color,
+      },
+      
+      carCondition: {
+        fuelLevel: data.fuel_level,
+        mileage: data.car_mileage,
+        insuranceType: data.insurance_type,
+        exteriorCondition: data.exterior_condition || 'good',
+        interiorCondition: data.interior_condition || 'good',
+        mechanicalCondition: data.mechanical_condition || 'good',
+        notes: data.condition_notes,
+      },
+      
+      damagePoints: data.damage_points?.map((dp: any) => ({
+        id: dp.id,
+        x: dp.x_position,
+        y: dp.y_position,
+        view: dp.view_side,
+        description: dp.description,
+        severity: dp.severity,
+        markerType: dp.marker_type || 'slight-scratch',
+        timestamp: new Date(dp.created_at),
+      })) || [],
+      
+      photoUris: [], // Will be fetched separately with async version
       clientSignature: data.client_signature_url || '',
       
       status,
@@ -433,7 +526,18 @@ export class SupabaseContractService {
         }
       }
 
-      return this.mapSupabaseToContract(savedContract);
+      // Upload photos if any
+      if (contract.photoUris && contract.photoUris.length > 0) {
+        try {
+          await PhotoStorageService.uploadContractPhotos(contract.id, contract.photoUris);
+          console.log(`✅ Uploaded ${contract.photoUris.length} photos for contract ${contract.id}`);
+        } catch (error) {
+          console.error('Error uploading contract photos:', error);
+          // Don't throw, contract is already saved
+        }
+      }
+
+      return await this.mapSupabaseToContractAsync(savedContract);
     } catch (error) {
       console.error('Error in saveContract:', error);
       throw error;
@@ -558,7 +662,28 @@ export class SupabaseContractService {
         }
       }
 
-      return this.mapSupabaseToContract(updatedContract);
+      // Handle photo updates if there are new photos
+      if (contract.photoUris && contract.photoUris.length > 0) {
+        // Check if photos are local URIs (need upload) or URLs (already uploaded)
+        const localPhotos = contract.photoUris.filter(uri => 
+          uri.startsWith('file://') || uri.startsWith('content://')
+        );
+        
+        if (localPhotos.length > 0) {
+          try {
+            // Delete existing photos
+            await PhotoStorageService.deleteContractPhotos(id);
+            
+            // Upload new photos
+            await PhotoStorageService.uploadContractPhotos(id, localPhotos);
+            console.log(`✅ Updated ${localPhotos.length} photos for contract ${id}`);
+          } catch (error) {
+            console.error('Error updating contract photos:', error);
+          }
+        }
+      }
+
+      return await this.mapSupabaseToContractAsync(updatedContract);
     } catch (error) {
       console.error('Error in updateContract:', error);
       throw error;

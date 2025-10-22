@@ -8,39 +8,29 @@ import {
   Alert,
   ScrollView,
   TextInput,
-  Modal,
+  FlatList,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SimpleGlassCard } from '../../components/glass-card';
-import { Colors, Typography, Spacing } from '../../utils/design-system';
+import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
-import { CarService } from '../../services/car.service';
-import { Car } from '../../models/car.interface';
+import { VehicleService } from '../../services/vehicle.service';
+import { Vehicle, VehicleStatus } from '../../models/vehicle.interface';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 8;
+const NUM_COLUMNS = 2;
+const CARD_WIDTH = (width - (CARD_MARGIN * (NUM_COLUMNS + 1))) / NUM_COLUMNS;
 
 export default function CarsScreen() {
   const router = useRouter();
-  const [cars, setCars] = useState<Car[]>([]);
-  const [filtered, setFiltered] = useState<Car[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [filtered, setFiltered] = useState<Vehicle[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'available' | 'rented'>('all');
-  const [showModal, setShowModal] = useState(false);
-  const [editingCar, setEditingCar] = useState<Car | null>(null);
-  const [formData, setFormData] = useState({
-    make: '',
-    model: '',
-    year: new Date().getFullYear(),
-    licensePlate: '',
-    color: '',
-    fuelType: 'gasoline' as 'gasoline' | 'diesel' | 'electric' | 'hybrid',
-    transmission: 'manual' as 'manual' | 'automatic',
-    seats: 5,
-    dailyRate: 0,
-    category: '',
-    type: 'Car',
-  });
+  const [filter, setFilter] = useState<'all' | 'available' | 'rented' | 'maintenance'>('all');
 
   useEffect(() => {
     loadCars();
@@ -48,86 +38,22 @@ export default function CarsScreen() {
 
   useEffect(() => {
     filterCars();
-  }, [cars, search, filter]);
+  }, [vehicles, search, filter]);
 
   async function loadCars() {
     try {
-      const data = await CarService.getAllCars();
-      setCars(data);
+      const data = await VehicleService.getAllVehicles();
+      setVehicles(data);
     } catch (error) {
-      console.error('Error loading cars:', error);
-      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης αυτοκινήτων');
+      console.error('Error loading vehicles:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία φόρτωσης οχημάτων');
     }
   }
 
-  function openAddModal() {
-    setEditingCar(null);
-    setFormData({
-      make: '',
-      model: '',
-      year: new Date().getFullYear(),
-      licensePlate: '',
-      color: '',
-      fuelType: 'gasoline',
-      transmission: 'manual',
-      seats: 5,
-      dailyRate: 0,
-      category: '',
-      type: 'Car',
-    });
-    setShowModal(true);
-  }
-
-  function openEditModal(car: Car) {
-    setEditingCar(car);
-    setFormData({
-      make: car.make,
-      model: car.model,
-      year: car.year || new Date().getFullYear(),
-      licensePlate: car.licensePlate,
-      color: car.color || '',
-      fuelType: (car.fuelType as any) || 'gasoline',
-      transmission: (car.transmission as any) || 'manual',
-      seats: car.seats || 5,
-      dailyRate: car.dailyRate || 0,
-      category: car.category || '',
-      type: car.type || 'Car',
-    });
-    setShowModal(true);
-  }
-
-  async function saveCar() {
-    if (!formData.make || !formData.model || !formData.licensePlate) {
-      Alert.alert('Σφάλμα', 'Παρακαλώ συμπληρώστε τα απαιτούμενα πεδία (Μάρκα, Μοντέλο, Πινακίδα)');
-      return;
-    }
-
-    try {
-      if (editingCar) {
-        // Update existing car
-        await CarService.updateCar(editingCar.id, formData);
-        Alert.alert('Επιτυχία', 'Το αυτοκίνητο ενημερώθηκε επιτυχώς!');
-      } else {
-        // Create new car
-        await CarService.createCar({
-          ...formData,
-          isAvailable: true,
-          status: 'available',
-        } as any);
-        Alert.alert('Επιτυχία', 'Το αυτοκίνητο προστέθηκε επιτυχώς!');
-      }
-      setShowModal(false);
-      loadCars();
-    } catch (error) {
-      console.error('Error saving car:', error);
-      Alert.alert('Σφάλμα', `Αποτυχία: ${error instanceof Error ? error.message : 'Άγνωστο σφάλμα'}`);
-    }
-  }
-
-  async function deleteCar(car: Car) {
+  async function deleteVehicle(vehicle: Vehicle) {
     Alert.alert(
       'Επιβεβαίωση Διαγραφής',
-      `Είστε σίγουροι ότι θέλετε να διαγράψετε το "${car.make} ${car.model}" (${car.licensePlate});`,
+      `Είστε σίγουροι ότι θέλετε να διαγράψετε το όχημα "${vehicle.make} ${vehicle.model}" (${vehicle.licensePlate});`,
       [
         { text: 'Ακύρωση', style: 'cancel' },
         {
@@ -135,11 +61,12 @@ export default function CarsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await CarService.deleteCar(car.id);
-              Alert.alert('Επιτυχία', 'Το αυτοκίνητο διαγράφηκε επιτυχώς.');
+              await VehicleService.deleteVehicle(vehicle.id);
+              Alert.alert('Επιτυχία', 'Το όχημα διαγράφηκε επιτυχώς.');
               loadCars();
             } catch (error) {
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής αυτοκινήτου.');
+              console.error('Error deleting vehicle:', error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής οχήματος.');
             }
           }
         }
@@ -148,15 +75,16 @@ export default function CarsScreen() {
   }
 
   function filterCars() {
-    let result = cars;
-    if (filter === 'available') result = result.filter(c => c.isAvailable === true);
-    if (filter === 'rented') result = result.filter(c => c.isAvailable === false);
+    let result = vehicles;
+    if (filter === 'available') result = result.filter(v => v.status === 'available');
+    if (filter === 'rented') result = result.filter(v => v.status === 'rented');
+    if (filter === 'maintenance') result = result.filter(v => v.status === 'maintenance');
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(c =>
-        c.make.toLowerCase().includes(q) ||
-        c.model.toLowerCase().includes(q) ||
-        c.licensePlate.toLowerCase().includes(q)
+      result = result.filter(v =>
+        v.make.toLowerCase().includes(q) ||
+        v.model.toLowerCase().includes(q) ||
+        v.licensePlate.toLowerCase().includes(q)
       );
     }
     setFiltered(result);
@@ -170,7 +98,6 @@ export default function CarsScreen() {
 
   return (
     <View style={s.container}>
-      {/* Breadcrumb */}
       <View style={s.breadcrumb}>
         <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
           <Ionicons name="home" size={14} color={Colors.primary} />
@@ -180,44 +107,43 @@ export default function CarsScreen() {
         <Text style={s.breadcrumbCurrent}>Αυτοκίνητα</Text>
       </View>
 
-      {/* Top Bar with Search and Filters */}
       <View style={s.topBar}>
         <View style={s.searchBox}>
           <Ionicons name="search" size={16} color={Colors.textSecondary} />
           <TextInput style={s.searchInput} placeholder="Αναζήτηση..." value={search} onChangeText={setSearch} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters}>
-          {([['all', 'Όλα'], ['available', 'Διαθέσιμα'], ['rented', 'Μη Διαθέσιμα']] as const).map(([f, label]) => (
+          {([['all', 'Όλα'], ['available', 'Διαθέσιμα'], ['rented', 'Ενοικιασμένα'], ['maintenance', 'Συντήρηση']] as const).map(([f, label]) => (
             <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
               <Text style={[s.filterText, filter === f && s.filterTextActive]}>
-                {label} ({cars.filter(c => f === 'all' || (f === 'available' ? c.isAvailable : !c.isAvailable)).length})
+                {label} ({f === 'all' ? vehicles.length : vehicles.filter(c => c.status === f).length})
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Cars List */}
       <ScrollView style={s.list} contentContainerStyle={s.listContent} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {filtered.map(car => (
-          <TouchableOpacity key={car.id} style={s.card} onPress={() => openEditModal(car)}>
+        {filtered.map(c => (
+          <TouchableOpacity key={c.id} style={s.card} onPress={() => router.push(`/car-details?carId=${c.id}`)}>
             <View style={s.row}>
               <View style={s.left}>
-                <Text style={s.name} numberOfLines={1}>{car.make} {car.model}</Text>
-                <Text style={s.detail}>{car.licensePlate} • {car.year}</Text>
-                <Text style={s.detail}>{car.fuelType || 'N/A'} • €{car.dailyRate}/day</Text>
+                <Text style={s.name} numberOfLines={1}>{c.make} {c.model}</Text>
+                <Text style={s.detail}>{c.licensePlate} • {c.year}</Text>
+                {c.color && <Text style={s.detail}>Χρώμα: {c.color}</Text>}
+                {c.category && <Text style={s.detail}>Κατηγορία: {c.category}</Text>}
               </View>
               <View style={s.right}>
-                <View style={[s.badge, { backgroundColor: car.isAvailable ? Colors.success + '15' : Colors.error + '15' }]}>
-                  <Text style={[s.badgeText, { color: car.isAvailable ? Colors.success : Colors.error }]}>
-                    {car.isAvailable ? 'Διαθέσιμο' : 'Μη Διαθέσιμο'}
+                <View style={[s.badge, { backgroundColor: c.status === 'available' ? Colors.success + '15' : Colors.error + '15' }]}>
+                  <Text style={[s.badgeText, { color: c.status === 'available' ? Colors.success : Colors.error }]}>
+                    {c.status === 'available' ? 'Διαθέσιμο' : c.status === 'rented' ? 'Ενοικιασμένο' : 'Συντήρηση'}
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={s.deleteButton}
                   onPress={(e) => {
                     e.stopPropagation();
-                    deleteCar(car);
+                    deleteVehicle(c);
                   }}
                 >
                   <Ionicons name="trash-outline" size={18} color={Colors.error} />
@@ -230,117 +156,9 @@ export default function CarsScreen() {
           <View style={s.empty}>
             <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
             <Text style={s.emptyText}>Δεν βρέθηκαν αυτοκίνητα</Text>
-            <TouchableOpacity style={s.addButton} onPress={openAddModal}>
-              <Ionicons name="add" size={20} color="#fff" />
-              <Text style={s.addButtonText}>Προσθήκη Αυτοκινήτου</Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
-
-      {/* Add/Edit Modal */}
-      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={s.modalContainer}>
-          <View style={s.modalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={s.modalCancelButton}>Ακύρωση</Text>
-            </TouchableOpacity>
-            <Text style={s.modalTitle}>{editingCar ? 'Επεξεργασία' : 'Νέο Αυτοκίνητο'}</Text>
-            <TouchableOpacity onPress={saveCar}>
-              <Text style={s.modalSaveButton}>Αποθήκευση</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={s.modalContent}>
-            <View style={s.formSection}>
-              <Text style={s.inputLabel}>Μάρκα *</Text>
-              <TextInput
-                style={s.input}
-                value={formData.make}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, make: text }))}
-                placeholder="Toyota"
-              />
-            </View>
-
-            <View style={s.formSection}>
-              <Text style={s.inputLabel}>Μοντέλο *</Text>
-              <TextInput
-                style={s.input}
-                value={formData.model}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, model: text }))}
-                placeholder="Yaris"
-              />
-            </View>
-
-            <View style={s.formRow}>
-              <View style={[s.formSection, { flex: 1 }]}>
-                <Text style={s.inputLabel}>Έτος</Text>
-                <TextInput
-                  style={s.input}
-                  value={formData.year.toString()}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, year: parseInt(text) || new Date().getFullYear() }))}
-                  placeholder="2023"
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={[s.formSection, { flex: 1 }]}>
-                <Text style={s.inputLabel}>Πινακίδα *</Text>
-                <TextInput
-                  style={s.input}
-                  value={formData.licensePlate}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, licensePlate: text }))}
-                  placeholder="ABC-1234"
-                />
-              </View>
-            </View>
-
-            <View style={s.formRow}>
-              <View style={[s.formSection, { flex: 1 }]}>
-                <Text style={s.inputLabel}>Καύσιμο</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {['gasoline', 'diesel', 'electric', 'hybrid'].map((fuel) => (
-                    <TouchableOpacity
-                      key={fuel}
-                      style={[s.chip, formData.fuelType === fuel && s.chipActive]}
-                      onPress={() => setFormData(prev => ({ ...prev, fuelType: fuel as any }))}
-                    >
-                      <Text style={[s.chipText, formData.fuelType === fuel && s.chipTextActive]}>{fuel}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
-
-            <View style={s.formRow}>
-              <View style={[s.formSection, { flex: 1 }]}>
-                <Text style={s.inputLabel}>Θέσεις</Text>
-                <TextInput
-                  style={s.input}
-                  value={formData.seats.toString()}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, seats: parseInt(text) || 5 }))}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={[s.formSection, { flex: 1 }]}>
-                <Text style={s.inputLabel}>Ημερήσια Τιμή (€)</Text>
-                <TextInput
-                  style={s.input}
-                  value={formData.dailyRate.toString()}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, dailyRate: parseFloat(text) || 0 }))}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* FAB Button for Add */}
-      {filtered.length > 0 && (
-        <TouchableOpacity style={s.fab} onPress={openAddModal}>
-          <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -355,38 +173,22 @@ const s = StyleSheet.create({
   searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, height: 36, marginBottom: 8, gap: 6 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text },
   filters: { flexDirection: 'row', gap: 6 },
-  filterBtn: { backgroundColor: '#f3f4f6', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 6 },
+  filterBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f3f4f6', marginRight: 6 },
   filterBtnActive: { backgroundColor: Colors.primary },
-  filterText: { fontSize: 12, color: Colors.text, fontWeight: '500' },
+  filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   filterTextActive: { color: '#fff' },
-  list: { flex: 1 },
-  listContent: { padding: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 8 },
+  list: { flex: 1, padding: 8 },
+  listContent: { paddingBottom: 100, flexGrow: 1 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, ...Shadows.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  left: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '600', color: Colors.text, marginBottom: 4 },
+  left: { flex: 1, marginRight: 8 },
+  name: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
   detail: { fontSize: 12, color: Colors.textSecondary, marginBottom: 2 },
-  right: { alignItems: 'flex-end', gap: 8 },
-  badge: { borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  right: { alignItems: 'flex-end', gap: 6 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   deleteButton: { padding: 4 },
   empty: { alignItems: 'center', paddingVertical: 48 },
-  emptyText: { fontSize: 16, color: Colors.textSecondary, marginTop: 16, marginBottom: 24 },
-  addButton: { backgroundColor: Colors.primary, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: Colors.primary, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
-  modalContainer: { flex: 1, backgroundColor: Colors.background },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  modalCancelButton: { fontSize: 16, color: Colors.textSecondary },
-  modalTitle: { fontSize: 18, color: Colors.text, fontWeight: '700' },
-  modalSaveButton: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: Spacing.md },
-  formSection: { marginBottom: Spacing.md },
-  formRow: { flexDirection: 'row', gap: Spacing.sm },
-  inputLabel: { fontSize: 14, color: Colors.text, fontWeight: '600', marginBottom: Spacing.sm },
-  input: { fontSize: 16, color: Colors.text, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
-  chip: { backgroundColor: '#f3f4f6', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
-  chipActive: { backgroundColor: Colors.primary },
-  chipText: { fontSize: 12, color: Colors.text },
-  chipTextActive: { color: '#fff' },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, Image } from 'react-native';
 import { DamagePoint, DamageMarkerType } from '../models/contract.interface';
 import Svg, { Line, Rect, Path } from 'react-native-svg';
@@ -26,13 +26,62 @@ const vehicleImages = {
  */
 export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEditable = true, onVehicleTypeChange }: CarDiagramProps) {
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
+  const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0 });
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0, x: 0, y: 0 });
+  const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
   const [selectedMarkerType, setSelectedMarkerType] = useState<DamageMarkerType>('slight-scratch');
   const containerRef = useRef<View>(null);
+  const imageRef = useRef<any>(null);
+  
+  // Reset image layout when vehicle type changes
+  useEffect(() => {
+    setImageNaturalSize({ width: 0, height: 0 });
+    setImageLayout({ width: 0, height: 0, x: 0, y: 0 });
+  }, [vehicleType]);
   
   function handleVehicleTypeChange(type: VehicleType) {
     setVehicleType(type);
     onVehicleTypeChange?.(type);
+  }
+
+  function handleImageLoad(event: any) {
+    const { width, height } = event.nativeEvent.source;
+    setImageNaturalSize({ width, height });
+    if (containerLayout.width > 0 && containerLayout.height > 0) {
+      calculateImageLayout(containerLayout.width, containerLayout.height, width, height);
+    }
+  }
+
+  function handleContainerLayout(event: any) {
+    const { width, height } = event.nativeEvent.layout;
+    setContainerLayout({ width, height });
+    if (imageNaturalSize.width > 0 && imageNaturalSize.height > 0) {
+      calculateImageLayout(width, height, imageNaturalSize.width, imageNaturalSize.height);
+    }
+  }
+
+  function calculateImageLayout(containerWidth: number, containerHeight: number, imageWidth?: number, imageHeight?: number) {
+    // Use actual image dimensions if available, otherwise fallback to 1:1 ratio
+    const imageAspectRatio = (imageWidth && imageHeight) ? imageWidth / imageHeight : 1;
+    const containerAspectRatio = containerWidth / containerHeight;
+
+    let displayWidth, displayHeight, offsetX, offsetY;
+
+    if (containerAspectRatio > imageAspectRatio) {
+      // Container is wider - image fits to height
+      displayHeight = containerHeight;
+      displayWidth = displayHeight * imageAspectRatio;
+      offsetX = (containerWidth - displayWidth) / 2;
+      offsetY = 0;
+    } else {
+      // Container is taller - image fits to width
+      displayWidth = containerWidth;
+      displayHeight = displayWidth / imageAspectRatio;
+      offsetX = 0;
+      offsetY = (containerHeight - displayHeight) / 2;
+    }
+
+    setImageLayout({ width: displayWidth, height: displayHeight, x: offsetX, y: offsetY });
   }
 
   function handlePress(event: any) {
@@ -40,10 +89,9 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
     
     const { locationX, locationY } = event.nativeEvent;
     
-    // Calculate position relative to the actual image, accounting for padding and centering
-    const containerPadding = 10;
-    const adjustedX = locationX - containerPadding - imageLayout.x;
-    const adjustedY = locationY - containerPadding - imageLayout.y;
+    // Adjust for image offset within container
+    const adjustedX = locationX - imageLayout.x;
+    const adjustedY = locationY - imageLayout.y;
     
     // Convert to percentage relative to actual image dimensions
     const xPercent = (adjustedX / imageLayout.width) * 100;
@@ -57,14 +105,13 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
     onAddDamage(clampedX, clampedY, 'front', selectedMarkerType);
   }
 
-  function handleImageLayout(event: any) {
-    const { width, height, x, y } = event.nativeEvent.layout;
-    setImageLayout({ width, height, x, y });
-  }
-
   function renderDamageMarker(damage: DamagePoint) {
     const size = 20;
     const color = '#FF0000';
+    
+    // Calculate actual position on the image
+    const left = (imageLayout.width * damage.x) / 100 + imageLayout.x;
+    const top = (imageLayout.height * damage.y) / 100 + imageLayout.y;
     
     switch (damage.markerType) {
       case 'slight-scratch':
@@ -77,8 +124,8 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
             style={[
               styles.damageMarkerSvg,
               {
-                left: `${damage.x}%`,
-                top: `${damage.y}%`,
+                left: left - size / 2,
+                top: top - size / 2,
               }
             ]}
           >
@@ -96,8 +143,8 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
             style={[
               styles.damageMarkerSvg,
               {
-                left: `${damage.x}%`,
-                top: `${damage.y}%`,
+                left: left - size / 2,
+                top: top - size / 2,
               }
             ]}
           >
@@ -115,8 +162,8 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
             style={[
               styles.damageMarkerSvg,
               {
-                left: `${damage.x}%`,
-                top: `${damage.y}%`,
+                left: left - size / 2,
+                top: top - size / 2,
               }
             ]}
           >
@@ -134,8 +181,8 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
             style={[
               styles.damageMarkerSvg,
               {
-                left: `${damage.x}%`,
-                top: `${damage.y}%`,
+                left: left - size / 2,
+                top: top - size / 2,
               }
             ]}
           >
@@ -245,12 +292,14 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
         disabled={!isEditable}
         style={styles.diagramContainer}
         ref={containerRef}
+        onLayout={handleContainerLayout}
       >
         <Image
+          ref={imageRef}
           source={vehicleImages[vehicleType]}
           style={styles.vehicleImage}
           resizeMode="contain"
-          onLayout={handleImageLayout}
+          onLoad={handleImageLoad}
         />
         
         {/* Damage markers overlaid on image */}
@@ -259,10 +308,8 @@ export function CarDiagram({ onAddDamage, onRemoveLastDamage, damagePoints, isEd
             style={[
               styles.damageOverlay,
               {
-                left: imageLayout.x + 10,
-                top: imageLayout.y + 10,
-                width: imageLayout.width,
-                height: imageLayout.height,
+                width: containerLayout.width,
+                height: containerLayout.height,
               }
             ]}
           >
@@ -349,6 +396,8 @@ const styles = StyleSheet.create({
   },
   damageOverlay: {
     position: 'absolute',
+    left: 0,
+    top: 0,
     pointerEvents: 'none',
   },
   damageMarkerSvg: {

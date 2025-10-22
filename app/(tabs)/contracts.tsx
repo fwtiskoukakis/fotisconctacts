@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -73,6 +74,61 @@ export default function ContractsScreen() {
     setRefreshing(false);
   };
 
+  const handlePhoneCall = (phoneNumber: string) => {
+    const phone = phoneNumber.replace(/\s/g, ''); // Remove spaces
+    Linking.openURL(`tel:${phone}`).catch(() => {
+      Alert.alert('Σφάλμα', 'Δεν είναι δυνατή η κλήση');
+    });
+  };
+
+  const getActualContractStatus = (contract: Contract): 'active' | 'completed' | 'upcoming' => {
+    try {
+      const now = new Date();
+      
+      // Validate and parse pickup datetime
+      const pickupDate = new Date(contract.rentalPeriod.pickupDate);
+      if (isNaN(pickupDate.getTime())) {
+        console.warn('Invalid pickup date for contract:', contract.id);
+        return contract.status; // Fallback to stored status
+      }
+      
+      const pickupTimeParts = contract.rentalPeriod.pickupTime?.split(':') || ['00', '00'];
+      const pickupHours = parseInt(pickupTimeParts[0]) || 0;
+      const pickupMinutes = parseInt(pickupTimeParts[1]) || 0;
+      pickupDate.setHours(pickupHours, pickupMinutes, 0, 0);
+      
+      // Validate and parse dropoff datetime
+      const dropoffDate = new Date(contract.rentalPeriod.dropoffDate);
+      if (isNaN(dropoffDate.getTime())) {
+        console.warn('Invalid dropoff date for contract:', contract.id);
+        return contract.status; // Fallback to stored status
+      }
+      
+      const dropoffTimeParts = contract.rentalPeriod.dropoffTime?.split(':') || ['23', '59'];
+      const dropoffHours = parseInt(dropoffTimeParts[0]) || 23;
+      const dropoffMinutes = parseInt(dropoffTimeParts[1]) || 59;
+      dropoffDate.setHours(dropoffHours, dropoffMinutes, 0, 0);
+      
+      // Check if dates are valid after setting time
+      if (isNaN(pickupDate.getTime()) || isNaN(dropoffDate.getTime())) {
+        console.warn('Invalid dates after time parsing for contract:', contract.id);
+        return contract.status;
+      }
+      
+      // Determine actual status based on current time
+      if (now < pickupDate) {
+        return 'upcoming';
+      } else if (now >= pickupDate && now <= dropoffDate) {
+        return 'active';
+      } else {
+        return 'completed';
+      }
+    } catch (error) {
+      console.error('Error calculating contract status:', error);
+      return contract.status; // Fallback to stored status on error
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return Colors.success;
@@ -135,41 +191,55 @@ export default function ContractsScreen() {
         {...smoothScrollConfig}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {filteredContracts.map(c => (
-          <TouchableOpacity
-            key={c.id}
-            style={styles.card}
-            onPress={() => router.push(`/contract-details?contractId=${c.id}`)}
-          >
-            <View style={styles.row}>
-              <View style={styles.left}>
-                <Text style={styles.name} numberOfLines={1}>{c.renterInfo.fullName}</Text>
-                <Text style={styles.detail} numberOfLines={1}>
-                  {c.carInfo.makeModel} • {c.carInfo.licensePlate}
-                </Text>
-                <Text style={styles.date}>
-                  {new Date(c.rentalPeriod.pickupDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} - {new Date(c.rentalPeriod.dropoffDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })}
-                </Text>
-              </View>
-              <View style={styles.right}>
-                <View style={[styles.badge, { backgroundColor: getStatusColor(c.status) + '15' }]}>
-                  <Text style={[styles.badgeText, { color: getStatusColor(c.status) }]}>
-                    {getStatusLabel(c.status)}
+        {filteredContracts.map(c => {
+          const actualStatus = getActualContractStatus(c);
+          return (
+            <TouchableOpacity
+              key={c.id}
+              style={styles.card}
+              onPress={() => router.push(`/contract-details?contractId=${c.id}`)}
+            >
+              <View style={styles.row}>
+                <View style={styles.left}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name} numberOfLines={1}>{c.renterInfo.fullName}</Text>
+                    <TouchableOpacity
+                      style={styles.phoneButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handlePhoneCall(c.renterInfo.phoneNumber || c.renterInfo.phone);
+                      }}
+                    >
+                      <Ionicons name="call" size={16} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.detail} numberOfLines={1}>
+                    {c.carInfo.makeModel} • {c.carInfo.licensePlate}
+                  </Text>
+                  <Text style={styles.date}>
+                    {new Date(c.rentalPeriod.pickupDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} {c.rentalPeriod.pickupTime} - {new Date(c.rentalPeriod.dropoffDate).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })} {c.rentalPeriod.dropoffTime}
                   </Text>
                 </View>
-                <Text style={styles.price}>€{c.rentalPeriod.totalCost}</Text>
-                
-                {/* AADE Status Badge */}
-                {(c.aadeStatus === 'submitted' || c.aadeStatus === 'completed') && (
-                  <View style={styles.aadeBadge}>
-                    <Ionicons name="cloud-done" size={12} color="#28a745" />
-                    <Text style={styles.aadeBadgeText}>ΑΑΔΕ</Text>
+                <View style={styles.right}>
+                  <View style={[styles.badge, { backgroundColor: getStatusColor(actualStatus) + '15' }]}>
+                    <Text style={[styles.badgeText, { color: getStatusColor(actualStatus) }]}>
+                      {getStatusLabel(actualStatus)}
+                    </Text>
                   </View>
-                )}
+                  <Text style={styles.price}>€{c.rentalPeriod.totalCost}</Text>
+                  
+                  {/* AADE Status Badge */}
+                  {(c.aadeStatus === 'submitted' || c.aadeStatus === 'completed') && (
+                    <View style={styles.aadeBadge}>
+                      <Ionicons name="cloud-done" size={12} color="#28a745" />
+                      <Text style={styles.aadeBadgeText}>ΑΑΔΕ</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
         {filteredContracts.length === 0 && (
           <View style={styles.empty}>
             <Ionicons name="document-outline" size={48} color={Colors.textSecondary} />
@@ -235,7 +305,21 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   left: { flex: 1, marginRight: 8 },
-  name: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  nameRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8,
+    marginBottom: 2,
+  },
+  name: { fontSize: 15, fontWeight: '700', color: Colors.text, flex: 1 },
+  phoneButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   detail: { fontSize: 13, color: Colors.textSecondary, marginBottom: 4 },
   date: { fontSize: 12, color: Colors.textTertiary },
   right: { alignItems: 'flex-end', gap: 6 },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   Modal,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
 import { usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../utils/design-system';
+import { FleetOSLogo as FleetOSIcon } from '../components/fleetos-logo';
 
 const { width } = Dimensions.get('window');
 
@@ -52,7 +54,29 @@ export function ContextAwareFab({
   const [isExpanded, setIsExpanded] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0));
-  const [rotateAnim] = useState(new Animated.Value(0));
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Continuous pulse animation for the icon
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
   function getActionsForCurrentPage(): FabAction[] {
     // Normalize pathname to handle both /page and /(tabs)/page formats
@@ -66,7 +90,7 @@ export function ContextAwareFab({
             label: 'Νέο Συμβόλαιο',
             icon: '📋',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewContract?.();
             },
           },
@@ -75,7 +99,7 @@ export function ContextAwareFab({
             label: 'Καταγραφή Ζημιάς',
             icon: '⚠️',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewDamage?.();
             },
           },
@@ -84,7 +108,7 @@ export function ContextAwareFab({
             label: 'Νέος Χρήστης',
             icon: '👤',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewUser?.();
             },
           },
@@ -97,7 +121,7 @@ export function ContextAwareFab({
             label: 'Νέο Συμβόλαιο',
             icon: '📋',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewContract?.();
             },
           },
@@ -106,7 +130,7 @@ export function ContextAwareFab({
             label: 'Μαζικές Ενέργειες',
             icon: '⚡',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               // TODO: Implement bulk operations
             },
           },
@@ -115,7 +139,7 @@ export function ContextAwareFab({
             label: 'Εισαγωγή',
             icon: '📥',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               // TODO: Implement import
             },
           },
@@ -128,7 +152,7 @@ export function ContextAwareFab({
             label: 'Νέα Ζημιά',
             icon: '⚠️',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewDamage?.();
             },
           },
@@ -137,7 +161,7 @@ export function ContextAwareFab({
             label: 'Γρήγορη Φωτογραφία',
             icon: '📷',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onQuickPhoto?.();
             },
           },
@@ -146,7 +170,7 @@ export function ContextAwareFab({
           label: 'Πρότυπο Ζημιάς',
           icon: '📝',
           onPress: () => {
-            setIsExpanded(false);
+            closeMenu();
             onDamageTemplate?.();
           },
         },
@@ -159,7 +183,7 @@ export function ContextAwareFab({
             label: 'Νέο Αυτοκίνητο',
             icon: '🚗',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewCar?.();
             },
           },
@@ -168,7 +192,7 @@ export function ContextAwareFab({
             label: 'Συντήρηση',
             icon: '🔧',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onCarMaintenance?.();
             },
           },
@@ -177,7 +201,7 @@ export function ContextAwareFab({
             label: 'Επιθεώρηση',
             icon: '🔍',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onCarInspection?.();
             },
           },
@@ -190,7 +214,7 @@ export function ContextAwareFab({
             label: 'Αναφορά',
             icon: '📊',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onGenerateReport?.();
             },
           },
@@ -199,7 +223,7 @@ export function ContextAwareFab({
             label: 'Εξαγωγή',
             icon: '📤',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onExportData?.();
             },
           },
@@ -208,7 +232,7 @@ export function ContextAwareFab({
             label: 'Προγραμματισμός',
             icon: '⏰',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onScheduleReport?.();
             },
           },
@@ -221,7 +245,7 @@ export function ContextAwareFab({
             label: 'Επεξεργασία',
             icon: '✏️',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               // TODO: Implement profile edit
             },
           },
@@ -230,7 +254,7 @@ export function ContextAwareFab({
             label: 'Ρυθμίσεις',
             icon: '⚙️',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               // TODO: Navigate to settings
             },
           },
@@ -239,7 +263,7 @@ export function ContextAwareFab({
             label: 'Αντίγραφο',
             icon: '💾',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               // TODO: Implement data backup
             },
           },
@@ -252,7 +276,7 @@ export function ContextAwareFab({
             label: 'Νέο Συμβόλαιο',
             icon: '📋',
             onPress: () => {
-              setIsExpanded(false);
+              closeMenu();
               onNewContract?.();
             },
           },
@@ -267,28 +291,38 @@ export function ContextAwareFab({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: newExpanded ? 1 : 0,
-        duration: 200,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
+      Animated.timing(scaleAnim, {
         toValue: newExpanded ? 1 : 0,
-        tension: 100,
-        friction: 8,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.timing(rotateAnim, {
-        toValue: newExpanded ? 1 : 0,
-        duration: 200,
+    ]).start();
+  }
+
+  function closeMenu() {
+    if (!isExpanded) return;
+    
+    setIsExpanded(false);
+    
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      // Reset animations when collapsed
-      if (!newExpanded) {
-        fadeAnim.setValue(0);
-        scaleAnim.setValue(0);
-        rotateAnim.setValue(0);
-      }
-    });
+      Animated.timing(scaleAnim, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
   }
 
   const actions = getActionsForCurrentPage();
@@ -300,12 +334,12 @@ export function ContextAwareFab({
         visible={isExpanded}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsExpanded(false)}
+        onRequestClose={closeMenu}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setIsExpanded(false)}
+          onPress={closeMenu}
         >
           <View style={styles.actionsContainer}>
             {actions.map((action, index) => (
@@ -352,23 +386,21 @@ export function ContextAwareFab({
         onPress={toggleExpanded}
         activeOpacity={0.8}
       >
-        <Animated.Text
-          style={[
-            styles.fabIcon,
-            {
-              transform: [
-                {
-                  rotate: rotateAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0deg', '45deg'],
-                  }),
-                },
-              ],
-            },
-          ]}
+        <Animated.View
+          style={{
+            transform: [
+              { scale: pulseAnim },
+              {
+                rotate: scaleAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '180deg'], // Rotates 180 degrees when expanded
+                }),
+              },
+            ],
+          }}
         >
-          +
-        </Animated.Text>
+          <FleetOSIcon variant="icon" size={36} color="#FFFFFF" />
+        </Animated.View>
       </TouchableOpacity>
     </View>
   );
