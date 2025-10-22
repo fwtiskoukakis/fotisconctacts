@@ -21,7 +21,7 @@ import { Vehicle, VehicleStatus } from '../../models/vehicle.interface';
 
 const { width } = Dimensions.get('window');
 const CARD_MARGIN = 8;
-const NUM_COLUMNS = 2;
+const NUM_COLUMNS = 5;
 const CARD_WIDTH = (width - (CARD_MARGIN * (NUM_COLUMNS + 1))) / NUM_COLUMNS;
 
 export default function CarsScreen() {
@@ -123,42 +123,50 @@ export default function CarsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={s.list} contentContainerStyle={s.listContent} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {filtered.map(c => (
-          <TouchableOpacity key={c.id} style={s.card} onPress={() => router.push(`/car-details?carId=${c.id}`)}>
-            <View style={s.row}>
-              <View style={s.left}>
-                <Text style={s.name} numberOfLines={1}>{c.make} {c.model}</Text>
-                <Text style={s.detail}>{c.licensePlate} • {c.year}</Text>
-                {c.color && <Text style={s.detail}>Χρώμα: {c.color}</Text>}
-                {c.category && <Text style={s.detail}>Κατηγορία: {c.category}</Text>}
-              </View>
-              <View style={s.right}>
-                <View style={[s.badge, { backgroundColor: c.status === 'available' ? Colors.success + '15' : Colors.error + '15' }]}>
-                  <Text style={[s.badgeText, { color: c.status === 'available' ? Colors.success : Colors.error }]}>
-                    {c.status === 'available' ? 'Διαθέσιμο' : c.status === 'rented' ? 'Ενοικιασμένο' : 'Συντήρηση'}
-                  </Text>
-                </View>
+      <FlatList
+        data={filtered}
+        numColumns={NUM_COLUMNS}
+        keyExtractor={(item) => item.id}
+        style={s.list}
+        contentContainerStyle={s.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        renderItem={({ item: vehicle }) => (
+          <TouchableOpacity 
+            style={[s.card, { width: CARD_WIDTH }]} 
+            onPress={() => router.push(`/car-details?carId=${vehicle.id}`)}
+            activeOpacity={0.7}
+          >
+            <View style={s.cardContent}>
+              <View style={s.cardHeader}>
+                <View style={[s.statusDot, { backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error }]} />
                 <TouchableOpacity
                   style={s.deleteButton}
                   onPress={(e) => {
                     e.stopPropagation();
-                    deleteVehicle(c);
+                    deleteVehicle(vehicle);
                   }}
                 >
-                  <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                  <Ionicons name="trash-outline" size={12} color={Colors.error} />
                 </TouchableOpacity>
+              </View>
+              <View style={s.cardBody}>
+                <Text style={s.makeModel} numberOfLines={2}>
+                  {vehicle.make} {vehicle.model}
+                </Text>
+                <Text style={s.plateNumber} numberOfLines={1}>
+                  {vehicle.licensePlate}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
-        ))}
-        {filtered.length === 0 && (
+        )}
+        ListEmptyComponent={() => (
           <View style={s.empty}>
             <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
             <Text style={s.emptyText}>Δεν βρέθηκαν αυτοκίνητα</Text>
           </View>
         )}
-      </ScrollView>
+      />
     </View>
   );
 }
@@ -177,18 +185,59 @@ const s = StyleSheet.create({
   filterBtnActive: { backgroundColor: Colors.primary },
   filterText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   filterTextActive: { color: '#fff' },
-  list: { flex: 1, padding: 8 },
-  listContent: { paddingBottom: 100, flexGrow: 1 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8, ...Shadows.sm },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  left: { flex: 1, marginRight: 8 },
-  name: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  detail: { fontSize: 12, color: Colors.textSecondary, marginBottom: 2 },
-  right: { alignItems: 'flex-end', gap: 6 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  price: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  deleteButton: { padding: 4 },
-  empty: { alignItems: 'center', paddingVertical: 48 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 12 },
+  list: { flex: 1, padding: CARD_MARGIN },
+  listContent: { paddingBottom: 100 },
+  card: { 
+    backgroundColor: '#fff', 
+    borderRadius: 12, 
+    margin: CARD_MARGIN / 2,
+    ...Shadows.sm 
+  },
+  cardContent: {
+    padding: 8,
+    height: 80,
+    justifyContent: 'space-between',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cardBody: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  makeModel: { 
+    fontSize: 11, 
+    fontWeight: '700', 
+    color: Colors.text, 
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  plateNumber: { 
+    fontSize: 10, 
+    color: Colors.textSecondary, 
+    textAlign: 'center',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  deleteButton: { 
+    padding: 2,
+  },
+  empty: { 
+    alignItems: 'center', 
+    paddingVertical: 48,
+    width: '100%',
+  },
+  emptyText: { 
+    fontSize: 14, 
+    color: Colors.textSecondary, 
+    marginTop: 12 
+  },
 });
