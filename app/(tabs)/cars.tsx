@@ -182,6 +182,7 @@ export default function CarsScreen() {
           // Debug logging for status
           if (vehicle.licensePlate === 'BMZ1133') {
             console.log(`🔍 DEBUG BMZ1133: status=${vehicle.status}, plate=${vehicle.licensePlate}`);
+            console.log(`🔍 DEBUG BMZ1133: getStatusColor result=${getStatusColor(vehicle.status)}`);
           }
           
           // Use the same color logic as vehicle details page

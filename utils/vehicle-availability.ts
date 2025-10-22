@@ -47,6 +47,12 @@ export async function updateVehicleAvailability(): Promise<void> {
       const isRented = rentedPlateNumbers.includes(normalizedVehiclePlate);
       const newStatus = isRented ? 'rented' : 'available';
       
+      // Debug logging for BMZ1133
+      if (normalizedVehiclePlate === 'BMZ1133') {
+        console.log(`🔍 BMZ1133 DEBUG: normalizedPlate=${normalizedVehiclePlate}, isRented=${isRented}, currentStatus=${vehicle.status}, newStatus=${newStatus}`);
+        console.log(`🔍 BMZ1133 DEBUG: rentedPlateNumbers includes BMZ1133? ${rentedPlateNumbers.includes('BMZ1133')}`);
+      }
+      
       // Only update if status actually changed
       if (vehicle.status !== newStatus) {
         console.log(`🔄 Updating ${vehicle.license_plate}: ${vehicle.status} → ${newStatus} (plate: ${normalizedVehiclePlate})`);
