@@ -3,18 +3,13 @@
  * Handles all vehicle-related database operations with Supabase
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase';
 import {  Vehicle, VehicleDamageHistoryItem, VehicleSummary } from '../models/vehicle.interface';
-import { Database } from '../models/database.types';
-
-type VehicleRow = Database['public']['Tables']['vehicles']['Row'];
-type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
-type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
 
 /**
  * Converts a database row to a Vehicle object
  */
-function convertRowToVehicle(row: VehicleRow): Vehicle {
+function convertRowToVehicle(row: any): Vehicle {
   return {
     id: row.id,
     userId: row.user_id,
@@ -45,7 +40,7 @@ function convertRowToVehicle(row: VehicleRow): Vehicle {
 /**
  * Converts a Vehicle object to database insert format
  */
-function convertVehicleToInsert(vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>): VehicleInsert {
+function convertVehicleToInsert(vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>): any {
   return {
     user_id: vehicle.userId,
     license_plate: vehicle.licensePlate,
@@ -154,7 +149,7 @@ export class VehicleService {
    * Update a vehicle
    */
   static async updateVehicle(id: string, updates: Partial<Omit<Vehicle, 'id' | 'userId' | 'createdAt'>>): Promise<Vehicle> {
-    const updateData: VehicleUpdate = {
+    const updateData: any = {
       ...(updates.licensePlate && { license_plate: updates.licensePlate }),
       ...(updates.make && { make: updates.make }),
       ...(updates.model && { model: updates.model }),

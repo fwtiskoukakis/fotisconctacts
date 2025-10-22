@@ -4,7 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initializeAADE } from '../utils/aade-config';
 import { AuthService } from '../services/auth.service';
+import { NotificationService } from '../services/notification.service';
 import { ThemeProvider } from '../contexts/theme-context';
+import { useNotifications } from '../hooks/useNotifications';
 
 /**
  * Root layout component with authentication protection
@@ -14,6 +16,9 @@ export default function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
   const segments = useSegments();
+  
+  // Initialize notification listeners
+  useNotifications();
 
   useEffect(() => {
     // Initialize AADE service on app startup
@@ -21,6 +26,9 @@ export default function RootLayout() {
 
     // Check authentication status
     checkAuthStatus();
+    
+    // Initialize notifications
+    initializeNotifications();
 
     // Listen to auth state changes
     const { data } = AuthService.onAuthStateChange((event, session) => {
@@ -41,6 +49,25 @@ export default function RootLayout() {
     const user = await AuthService.getCurrentUser();
     setIsAuthenticated(!!user);
     setIsAuthInitialized(true);
+  }
+
+  async function initializeNotifications() {
+    try {
+      // Initialize and get push token
+      const token = await NotificationService.initialize();
+      
+      if (token) {
+        console.log('Push notifications initialized successfully');
+        
+        // Save token to database if user is authenticated
+        const user = await AuthService.getCurrentUser();
+        if (user) {
+          await NotificationService.savePushToken(user.id, token);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initialize notifications:', error);
+    }
   }
 
   useEffect(() => {

@@ -26,8 +26,8 @@ export default function TabsLayout() {
         {/* Floating Action Button - context-aware */}
         <ContextAwareFab
           onNewContract={() => router.push('/new-contract')}
-          onNewDamage={() => router.push('/new-contract')} // Navigate to new contract (damage created there)
-          onNewCar={() => router.push('/cars')} // TODO: Create new car page
+          onNewDamage={() => router.push('/new-damage')} // Navigate to new damage screen
+          onNewCar={() => router.push('/fleet-management')} // Navigate to fleet management to add new car
         />
       </View>
       

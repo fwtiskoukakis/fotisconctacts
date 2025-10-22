@@ -52,6 +52,7 @@ export function ContextAwareFab({
   const [isExpanded, setIsExpanded] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0));
+  const [rotateAnim] = useState(new Animated.Value(0));
 
   function getActionsForCurrentPage(): FabAction[] {
     // Normalize pathname to handle both /page and /(tabs)/page formats
@@ -275,7 +276,19 @@ export function ContextAwareFab({
         friction: 8,
         useNativeDriver: true,
       }),
-    ]).start();
+      Animated.timing(rotateAnim, {
+        toValue: newExpanded ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Reset animations when collapsed
+      if (!newExpanded) {
+        fadeAnim.setValue(0);
+        scaleAnim.setValue(0);
+        rotateAnim.setValue(0);
+      }
+    });
   }
 
   const actions = getActionsForCurrentPage();
@@ -345,7 +358,7 @@ export function ContextAwareFab({
             {
               transform: [
                 {
-                  rotate: scaleAnim.interpolate({
+                  rotate: rotateAnim.interpolate({
                     inputRange: [0, 1],
                     outputRange: ['0deg', '45deg'],
                   }),
@@ -364,7 +377,7 @@ export function ContextAwareFab({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 100, // Higher above bottom tab bar
+    bottom: 120, // Higher above bottom tab bar
     right: 20,
     zIndex: 9999, // Above navbar (navbar is z-index: 10)
     elevation: 9999, // For Android

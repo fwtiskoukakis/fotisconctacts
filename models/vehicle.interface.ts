@@ -58,7 +58,7 @@ export interface Vehicle {
   
   // Metadata
   createdAt: Date;
-  updatedAt?: Date;
+  updatedAt: Date;
 }
 
 export interface VehicleDamageHistoryItem {

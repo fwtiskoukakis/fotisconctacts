@@ -206,7 +206,7 @@ export default function FleetManagementScreen() {
       const matchesSearch = searchTerm === '' || 
         vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vehicle.license_plate.toLowerCase().includes(searchTerm.toLowerCase());
+        vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesFilter = selectedFilter === 'all' || vehicle.status === selectedFilter;
       const matchesCategory = selectedCategory === 'all' || vehicle.category === selectedCategory;
@@ -223,7 +223,7 @@ export default function FleetManagementScreen() {
             <View style={styles.vehicleInfo}>
               <Text style={styles.vehicleMakeModel}>{vehicle.make} {vehicle.model}</Text>
               <Text style={styles.vehicleYear}>{vehicle.year}</Text>
-              <Text style={styles.vehiclePlate}>{vehicle.license_plate}</Text>
+              <Text style={styles.vehiclePlate}>{vehicle.licensePlate}</Text>
             </View>
             <View style={styles.vehicleStatusContainer}>
               <View style={[
@@ -248,28 +248,21 @@ export default function FleetManagementScreen() {
           <View style={styles.vehicleDetails}>
             <View style={styles.detailItem}>
               <Ionicons name="speedometer-outline" size={16} color={Colors.textSecondary} />
-              <Text style={styles.detailText}>{vehicle.mileage.toLocaleString()} km</Text>
+              <Text style={styles.detailText}>{vehicle.currentMileage?.toLocaleString() || 0} km</Text>
             </View>
             <View style={styles.detailItem}>
-              <Ionicons name="flash-outline" size={16} color={Colors.textSecondary} />
-              <Text style={styles.detailText}>{vehicle.fuel_level}/8</Text>
+              <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
+              <Text style={styles.detailText}>{vehicle.year || 'N/A'}</Text>
             </View>
             <View style={styles.detailItem}>
-              <Ionicons name="cash-outline" size={16} color={Colors.textSecondary} />
-              <Text style={styles.detailText}>€{vehicle.daily_rate}/ημέρα</Text>
+              <Ionicons name="pricetag-outline" size={16} color={Colors.textSecondary} />
+              <Text style={styles.detailText}>{vehicle.category || 'N/A'}</Text>
             </View>
             <View style={styles.detailItem}>
-              <Ionicons name="trending-up-outline" size={16} color={Colors.textSecondary} />
-              <Text style={styles.detailText}>{vehicle.total_rentals} ενοικιάσεις</Text>
+              <Ionicons name="checkmark-circle-outline" size={16} color={Colors.textSecondary} />
+              <Text style={styles.detailText}>{vehicle.status}</Text>
             </View>
           </View>
-          
-          {vehicle.branch && (
-            <View style={styles.vehicleBranch}>
-              <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-              <Text style={styles.branchText}>{vehicle.branch.name}</Text>
-            </View>
-          )}
         </TouchableOpacity>
       </SimpleGlassCard>
     );
@@ -991,3 +984,4 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+

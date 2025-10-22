@@ -3,7 +3,7 @@
  * Handles uploading and managing photos in Supabase Storage
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../utils/supabase';
 import * as FileSystem from 'expo-file-system';
 
 export interface UploadResult {

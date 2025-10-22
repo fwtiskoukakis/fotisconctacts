@@ -78,6 +78,7 @@ export default function NewContractScreen() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [clientSignature, setClientSignature] = useState<string>('');
   const [clientSignaturePaths, setClientSignaturePaths] = useState<string[]>([]);
+  const [observations, setObservations] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [previousDamages, setPreviousDamages] = useState<VehicleDamageHistoryItem[]>([]);
   const [isLoadingVehicle, setIsLoadingVehicle] = useState(false);
@@ -341,6 +342,7 @@ export default function NewContractScreen() {
         damagePoints,
         photoUris: photos,
         clientSignature,
+        observations,
         userId: currentUser.id, // Use authenticated user's ID
         status,
         createdAt: new Date(),
@@ -706,6 +708,23 @@ export default function NewContractScreen() {
                 </View>
               )}
             </View>
+          </View>
+        </View>
+
+        {/* 7. Observations / Notes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>7. Παρατηρήσεις / Σημειώσεις</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Παρατηρήσεις</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={observations}
+              onChangeText={setObservations}
+              placeholder="Προσθέστε τυχόν παρατηρήσεις ή σημειώσεις για το συμβόλαιο..."
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
           </View>
         </View>
 
@@ -1098,5 +1117,9 @@ const styles = StyleSheet.create({
     color: '#34C759',
     marginTop: 4,
     fontWeight: '600',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
 });

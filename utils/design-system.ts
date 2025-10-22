@@ -413,4 +413,11 @@ export const Glassmorphism = {
     borderColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 24,
   },
+  info: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backdropFilter: 'blur(20px)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderRadius: 12,
+  },
 };

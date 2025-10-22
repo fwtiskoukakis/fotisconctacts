@@ -6,11 +6,13 @@ import { SimpleGlassCard } from '../../components/glass-card';
 import { Colors, Typography, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
 import { AuthService } from '../../services/auth.service';
+import { useNotifications } from '../../hooks/useNotifications';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [biometricsEnabled, setBiometricsEnabled] = React.useState(false);
+  const { sendTestNotification } = useNotifications();
 
   const handleSignOut = async () => {
     Alert.alert('Αποσύνδεση', 'Θέλετε να αποσυνδεθείτε;', [
@@ -67,6 +69,18 @@ export default function SettingsScreen() {
           <View style={s.card}>
             <SettingItem icon="notifications" label="Ειδοποιήσεις" value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
             <SettingItem icon="mail" label="Email Ειδοποιήσεις" value={true} onValueChange={() => {}} />
+            <SettingItem 
+              icon="flask" 
+              label="Test Push Notification" 
+              onPress={async () => {
+                try {
+                  await sendTestNotification();
+                  Alert.alert('Επιτυχία', 'Η δοκιμαστική ειδοποίηση στάλθηκε!');
+                } catch (error) {
+                  Alert.alert('Σφάλμα', 'Αποτυχία αποστολής ειδοποίησης');
+                }
+              }} 
+            />
           </View>
         </View>
 

@@ -409,14 +409,13 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     ...Typography.h4,
-    color: '#FFFFFF',
+    color: Colors.text,
     fontWeight: '600',
     marginBottom: Spacing.xs,
   },
   infoText: {
     ...Typography.bodySmall,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    color: Colors.text,
     lineHeight: 20,
   },
   section: {
