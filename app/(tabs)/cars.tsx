@@ -169,6 +169,7 @@ export default function CarsScreen() {
       </View>
 
       <FlatList
+        key={gridStyle} // Force re-render when grid style changes
         data={filtered}
         numColumns={getGridConfig(gridStyle).numColumns}
         keyExtractor={(item) => item.id}
