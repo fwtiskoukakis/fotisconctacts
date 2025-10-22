@@ -16,9 +16,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Contract, RenterInfo, RentalPeriod, CarInfo, DamagePoint, DamageMarkerType, CarCondition } from '../models/contract.interface';
 import { CarDiagram } from '../components/car-diagram';
-import { PhotoCapture } from '../components/photo-capture';
-import { ImageModal } from '../components/image-modal';
+import { PhotoStorageService } from '../services/photo-storage.service';
 import { SupabaseContractService } from '../services/supabase-contract.service';
+import { ImageModal } from '../components/image-modal';
+import * as ImagePicker from 'expo-image-picker';
 import { format } from 'date-fns';
 
 type CarView = 'front' | 'rear' | 'left' | 'right';
@@ -40,6 +41,11 @@ export default function EditContractScreen() {
   // State for image modal
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+
+  // State for photo management
+  const [newPhotos, setNewPhotos] = useState<string[]>([]);
+  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   useEffect(() => {
     loadContract();
@@ -116,6 +122,108 @@ export default function EditContractScreen() {
     setSelectedImageUri(null);
   }
 
+  // Photo handling functions
+  async function handleCapturePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Σφάλμα', 'Η εφαρμογή χρειάζεται άδεια πρόσβασης στην κάμερα.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+      base64: false,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      const uri = result.assets[0].uri;
+      setNewPhotos(prev => [...prev, uri]);
+    }
+  }
+
+  async function handleUploadFromGallery() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Σφάλμα', 'Η εφαρμογή χρειάζεται άδεια για πρόσβαση στη συλλογή.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      quality: 0.8,
+      base64: false,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      const uri = result.assets[0].uri;
+      setNewPhotos(prev => [...prev, uri]);
+    }
+  }
+
+  function removeNewPhoto(index: number) {
+    setNewPhotos(prev => prev.filter((_, i) => i !== index));
+    // Also remove from uploaded URLs if they exist
+    if (uploadedPhotoUrls.length > 0) {
+      setUploadedPhotoUrls(prev => prev.filter((_, i) => i !== index));
+    }
+  }
+
+  async function handleSavePhotosToStorage() {
+    if (newPhotos.length === 0) {
+      Alert.alert('Προσοχή', 'Δεν υπάρχουν φωτογραφίες για αποθήκευση.');
+      return;
+    }
+
+    setIsUploadingPhotos(true);
+
+    try {
+      if (!contract) {
+        Alert.alert('Σφάλμα', 'Το συμβόλαιο δεν είναι διαθέσιμο.');
+        return;
+      }
+
+      console.log('Starting photo upload for contract:', contract.id);
+      console.log('Photos to upload:', newPhotos.length);
+
+      // Upload photos to Supabase
+      const uploadResults = await PhotoStorageService.uploadContractPhotos(contract.id, newPhotos);
+
+      console.log('Upload results:', uploadResults);
+
+      if (uploadResults.length > 0) {
+        // Extract URLs from upload results
+        const uploadedUrls = uploadResults.map(result => result.url);
+        setUploadedPhotoUrls(uploadedUrls);
+
+        // Update contract with new photos
+        setContract(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            photoUris: [...prev.photoUris, ...uploadedUrls]
+          };
+        });
+
+        // Clear new photos since they're now uploaded
+        setNewPhotos([]);
+
+        console.log('Photos uploaded successfully:', uploadedUrls);
+        Alert.alert(
+          'Επιτυχία',
+          `Αποθηκεύτηκαν ${uploadedUrls.length} φωτογραφίες επιτυχώς στο Supabase!\n\nΟι φωτογραφίες προστέθηκαν στο συμβόλαιο.`
+        );
+      } else {
+        console.error('No upload results returned');
+        Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η αποθήκευση των φωτογραφιών.');
+      }
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      Alert.alert('Σφάλμα', `Αποτυχία αποθήκευσης φωτογραφιών στο Supabase: ${error}`);
+    } finally {
+      setIsUploadingPhotos(false);
+    }
+  }
+
   function validateContract(): boolean {
     if (!contract) return false;
     
@@ -179,18 +287,26 @@ export default function EditContractScreen() {
         ...contract.rentalPeriod,
         dropoffLocation: finalDropoffLocation,
       },
+      // Use uploaded photos if available, otherwise use existing photos plus any new photos that weren't uploaded
+      photoUris: uploadedPhotoUrls.length > 0
+        ? [...contract.photoUris, ...uploadedPhotoUrls]
+        : [...contract.photoUris, ...newPhotos]
     };
 
     try {
       console.log('Starting contract update...');
       const result = await SupabaseContractService.updateContract(updatedContract.id, updatedContract);
       console.log('Contract updated successfully!', result);
-      
+
       setIsSaving(false);
-      
+
+      // Clear uploaded photos and new photos since they're now saved with the contract
+      setUploadedPhotoUrls([]);
+      setNewPhotos([]);
+
       // Show success notification
       Alert.alert(
-        '✅ Επιτυχία!', 
+        '✅ Επιτυχία!',
         'Το συμβόλαιο ενημερώθηκε επιτυχώς!\n\nΌλες οι αλλαγές σας έχουν αποθηκευτεί στη βάση δεδομένων.',
         [
           {
@@ -507,10 +623,13 @@ export default function EditContractScreen() {
                       ]}
                       onPress={() => setContract({
                         ...contract,
-                        carCondition: { 
+                        carCondition: {
                           fuelLevel: level,
                           mileage: contract.carCondition?.mileage || 0,
-                          insuranceType: contract.carCondition?.insuranceType || 'basic'
+                          insuranceType: contract.carCondition?.insuranceType || 'basic',
+                          exteriorCondition: contract.carCondition?.exteriorCondition || 'Καλή',
+                          interiorCondition: contract.carCondition?.interiorCondition || 'Καλή',
+                          mechanicalCondition: contract.carCondition?.mechanicalCondition || 'Καλή'
                         }
                       })}
                     >
@@ -537,7 +656,10 @@ export default function EditContractScreen() {
                   carCondition: { 
                     fuelLevel: contract.carCondition?.fuelLevel || 8,
                     mileage: parseInt(text) || 0,
-                    insuranceType: contract.carCondition?.insuranceType || 'basic'
+                    insuranceType: contract.carCondition?.insuranceType || 'basic',
+                    exteriorCondition: contract.carCondition?.exteriorCondition || 'Καλή',
+                    interiorCondition: contract.carCondition?.interiorCondition || 'Καλή',
+                    mechanicalCondition: contract.carCondition?.mechanicalCondition || 'Καλή'
                   }
                 })}
               />
@@ -553,7 +675,10 @@ export default function EditContractScreen() {
                 carCondition: { 
                   fuelLevel: contract.carCondition?.fuelLevel || 8,
                   mileage: contract.carCondition?.mileage || 0,
-                  insuranceType: 'basic'
+                  insuranceType: 'basic',
+                  exteriorCondition: contract.carCondition?.exteriorCondition || 'Καλή',
+                  interiorCondition: contract.carCondition?.interiorCondition || 'Καλή',
+                  mechanicalCondition: contract.carCondition?.mechanicalCondition || 'Καλή'
                 }
               })}
             >
@@ -568,7 +693,10 @@ export default function EditContractScreen() {
                 carCondition: { 
                   fuelLevel: contract.carCondition?.fuelLevel || 8,
                   mileage: contract.carCondition?.mileage || 0,
-                  insuranceType: 'full'
+                  insuranceType: 'full',
+                  exteriorCondition: contract.carCondition?.exteriorCondition || 'Καλή',
+                  interiorCondition: contract.carCondition?.interiorCondition || 'Καλή',
+                  mechanicalCondition: contract.carCondition?.mechanicalCondition || 'Καλή'
                 }
               })}
             >
@@ -591,19 +719,79 @@ export default function EditContractScreen() {
         {/* 5. Photos */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>5. Φωτογραφίες</Text>
-          <PhotoCapture onPhotoTaken={handlePhotoTaken} photos={contract.photoUris} />
+
+          {/* Buttons */}
+          <View style={styles.photoButtonsContainer}>
+            <TouchableOpacity style={styles.photoButton} onPress={handleCapturePhoto}>
+              <Text style={styles.photoButtonText}>📸 Νέα Φωτογραφία</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoButtonSecondary} onPress={handleUploadFromGallery}>
+              <Text style={styles.photoButtonText}>🖼️ Από Gallery</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Existing Photos */}
           {contract.photoUris.length > 0 && (
-            <View style={styles.photoGrid}>
+            <View style={styles.photoPreviewContainer}>
+              <Text style={styles.photoSectionLabel}>Υπάρχουσες Φωτογραφίες:</Text>
               {contract.photoUris.map((uri, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleImagePress(uri)}
-                  style={styles.photoContainer}
-                >
-                  <Image source={{ uri }} style={styles.photo} />
-                </TouchableOpacity>
+                <View key={`existing-${index}`} style={styles.photoWrapper}>
+                  <Image source={{ uri }} style={styles.photoPreview} />
+                  <TouchableOpacity
+                    onPress={() => handleImagePress(uri)}
+                    style={styles.viewPhotoButton}
+                  >
+                    <Text style={styles.viewPhotoText}>👁️</Text>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
+          )}
+
+          {/* New Photos Preview */}
+          {newPhotos.length > 0 && (
+            <View style={styles.photoPreviewContainer}>
+              <Text style={styles.photoSectionLabel}>Νέες Φωτογραφίες:</Text>
+              {newPhotos.map((uri, index) => (
+                <View key={`new-${index}`} style={styles.photoWrapper}>
+                  <Image source={{ uri }} style={styles.photoPreview} />
+                  <TouchableOpacity
+                    style={styles.removePhotoButton}
+                    onPress={() => removeNewPhoto(index)}
+                  >
+                    <Text style={styles.removePhotoText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Save to Supabase Button */}
+          {newPhotos.length > 0 && (
+            <TouchableOpacity
+              style={[styles.photoSaveButton, isUploadingPhotos && styles.photoSaveButtonDisabled]}
+              onPress={handleSavePhotosToStorage}
+              disabled={isUploadingPhotos}
+            >
+              <Text style={styles.photoSaveButtonText}>
+                {isUploadingPhotos ? 'Αποθήκευση...' : '💾 Αποθήκευση στο Supabase'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Success message when uploaded */}
+          {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === newPhotos.length && newPhotos.length > 0 && (
+            <View style={styles.uploadSuccessContainer}>
+              <Text style={styles.uploadSuccessText}>
+                ✓ Όλες οι νέες φωτογραφίες αποθηκεύτηκαν επιτυχώς στο Supabase!
+              </Text>
+            </View>
+          )}
+
+          {/* No photos message */}
+          {contract.photoUris.length === 0 && newPhotos.length === 0 && (
+            <Text style={styles.photoPlaceholderText}>Δεν υπάρχουν φωτογραφίες ακόμα</Text>
           )}
         </View>
 
@@ -844,5 +1032,122 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     resizeMode: 'cover',
+  },
+  photoButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  photoButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    marginRight: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  photoButtonSecondary: {
+    flex: 1,
+    backgroundColor: '#555',
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  photoButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  photoPreviewContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  photoSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    width: '100%',
+  },
+  photoWrapper: {
+    position: 'relative',
+  },
+  photoPreview: {
+    width: 90,
+    height: 90,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  viewPhotoButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewPhotoText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removePhotoText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  photoSaveButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  photoSaveButtonDisabled: {
+    backgroundColor: '#6c757d',
+  },
+  photoSaveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  uploadSuccessContainer: {
+    backgroundColor: '#d4edda',
+    borderColor: '#c3e6cb',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  uploadSuccessText: {
+    color: '#155724',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  photoPlaceholderText: {
+    fontSize: 13,
+    color: '#888',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

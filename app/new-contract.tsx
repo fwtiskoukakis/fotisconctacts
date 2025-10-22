@@ -18,14 +18,14 @@ import { Contract, RenterInfo, RentalPeriod, CarInfo, CarCondition, DamagePoint,
 import { ContractTemplate } from '../models/contract-template.interface';
 import { SignaturePad } from '../components/signature-pad';
 import { CarDiagram } from '../components/car-diagram';
-import { PhotoCapture } from '../components/photo-capture';
 import { ContractTemplateSelector } from '../components/contract-template-selector';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { AuthService } from '../services/auth.service';
-import { ContractTemplateService } from '../services/contract-template.service';
+import { PhotoStorageService } from '../services/photo-storage.service';
 import { CarService } from '../services/car.service';
-import { format } from 'date-fns';
 import Svg, { Path } from 'react-native-svg';
+import { format } from 'date-fns/format';
+import * as ImagePicker from 'expo-image-picker';
 
 type CarView = 'front' | 'rear' | 'left' | 'right';
 
@@ -62,6 +62,8 @@ export default function NewContractScreen() {
 
   const [carInfo, setCarInfo] = useState<CarInfo>({
     makeModel: '',
+    make: '',
+    model: '',
     year: new Date().getFullYear(),
     licensePlate: '',
     mileage: 0,
@@ -71,10 +73,15 @@ export default function NewContractScreen() {
     fuelLevel: 8, // Full tank by default
     mileage: 0,
     insuranceType: 'basic',
+    exteriorCondition: 'Καλή',
+    interiorCondition: 'Καλή',
+    mechanicalCondition: 'Καλή',
   });
 
   const [damagePoints, setDamagePoints] = useState<DamagePoint[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [clientSignature, setClientSignature] = useState<string>('');
   const [clientSignaturePaths, setClientSignaturePaths] = useState<string[]>([]);
   const [observations, setObservations] = useState<string>('');
@@ -227,6 +234,117 @@ export default function NewContractScreen() {
     setPhotos([...photos, uri]);
   }
 
+  // Photo handling functions
+  async function handleCapturePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Σφάλμα', 'Η εφαρμογή χρειάζεται άδεια πρόσβασης στην κάμερα.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+      base64: false,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      const uri = result.assets[0].uri;
+      setPhotos(prev => [...prev, uri]);
+    }
+  }
+
+  async function handleUploadFromGallery() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Σφάλμα', 'Η εφαρμογή χρειάζεται άδεια για πρόσβαση στη συλλογή.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      quality: 0.8,
+      base64: false,
+    });
+
+    if (!result.canceled && result.assets?.length > 0) {
+      const uri = result.assets[0].uri;
+      setPhotos(prev => [...prev, uri]);
+    }
+  }
+
+  function removePhoto(index: number) {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+    // Also remove from uploaded URLs if they exist
+    if (uploadedPhotoUrls.length > 0) {
+      setUploadedPhotoUrls(prev => prev.filter((_, i) => i !== index));
+    }
+  }
+
+  async function handleSavePhotosToStorage() {
+    if (photos.length === 0) {
+      Alert.alert('Προσοχή', 'Δεν υπάρχουν φωτογραφίες για αποθήκευση.');
+      return;
+    }
+
+    setIsUploadingPhotos(true);
+
+    try {
+      // Generate a temporary contract ID for photo upload
+      const tempContractId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Upload photos to Supabase
+      const uploadResults = await PhotoStorageService.uploadContractPhotos(tempContractId, photos);
+
+      if (uploadResults.length > 0) {
+        // Extract URLs from upload results
+        const uploadedUrls = uploadResults.map(result => result.url);
+        setUploadedPhotoUrls(uploadedUrls);
+
+        Alert.alert(
+          'Επιτυχία',
+          `Αποθηκεύτηκαν ${uploadedUrls.length} φωτογραφίες επιτυχώς στο Supabase!\n\nΟι φωτογραφίες θα χρησιμοποιηθούν αυτόματα όταν αποθηκεύσετε το συμβόλαιο.`
+        );
+      } else {
+        Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η αποθήκευση των φωτογραφιών.');
+      }
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία αποθήκευσης φωτογραφιών στο Supabase.');
+    } finally {
+      setIsUploadingPhotos(false);
+    }
+  }
+
+  async function uploadPhotosAfterContractSave(contractId: string) {
+    if (photos.length === 0) return;
+
+    try {
+      // Upload all photos to Supabase with the new contract ID
+      const uploadPromises = photos.map((photoUri, index) =>
+        PhotoStorageService.uploadContractPhoto(contractId, photoUri, index)
+      );
+
+      const results = await Promise.allSettled(uploadPromises);
+
+      // Update contract with uploaded URLs
+      const uploadedUrls = results
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+        .map(result => result.value.url);
+
+      // Update contract with new photo URLs
+      const updatedContract = await SupabaseContractService.getContractById(contractId);
+      if (updatedContract) {
+        await SupabaseContractService.updateContract(contractId, {
+          ...updatedContract,
+          photoUris: uploadedUrls
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading photos after contract save:', error);
+      // Continue even if photo upload fails
+    }
+  }
+
   function validateContract(): boolean {
     // Only essential fields are mandatory
     if (!renterInfo.fullName.trim()) {
@@ -332,7 +450,7 @@ export default function NewContractScreen() {
         carInfo,
         carCondition,
         damagePoints,
-        photoUris: photos,
+        photoUris: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : photos,
         clientSignature,
         observations,
         userId: currentUser.id, // Use authenticated user's ID
@@ -341,6 +459,11 @@ export default function NewContractScreen() {
       };
 
       await SupabaseContractService.saveContract(contract);
+
+      // Clear uploaded photo URLs since they're now saved with the contract
+      setUploadedPhotoUrls([]);
+      setPhotos([]);
+
       Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς!', [
         {
           text: 'OK',
@@ -657,7 +780,69 @@ export default function NewContractScreen() {
         {/* 5. Photos - Compact */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>5. Φωτογραφίες</Text>
-          <PhotoCapture onPhotoTaken={handlePhotoTaken} photos={photos} />
+
+          {/* Buttons */}
+          <View style={styles.photoButtonsContainer}>
+            <TouchableOpacity style={styles.photoButton} onPress={handleCapturePhoto}>
+              <Text style={styles.photoButtonText}>📸 Νέα Φωτογραφία</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.photoButtonSecondary} onPress={handleUploadFromGallery}>
+              <Text style={styles.photoButtonText}>🖼️ Από Gallery</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Preview */}
+          <View style={styles.photoPreviewContainer}>
+            {photos.length > 0 ? (
+              photos.map((uri, index) => (
+                <View key={index} style={styles.photoWrapper}>
+                  <Image
+                    source={{ uri }}
+                    style={[
+                      styles.photoPreview,
+                      uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && styles.photoPreviewUploaded
+                    ]}
+                  />
+                  {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && (
+                    <View style={styles.uploadedIndicator}>
+                      <Text style={styles.uploadedIndicatorText}>✓</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removePhotoButton}
+                    onPress={() => removePhoto(index)}
+                  >
+                    <Text style={styles.removePhotoText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.photoPlaceholderText}>Δεν υπάρχουν φωτογραφίες ακόμα</Text>
+            )}
+          </View>
+
+          {/* Save to Supabase Button */}
+          {photos.length > 0 && uploadedPhotoUrls.length !== photos.length && (
+            <TouchableOpacity
+              style={[styles.photoSaveButton, isUploadingPhotos && styles.photoSaveButtonDisabled]}
+              onPress={handleSavePhotosToStorage}
+              disabled={isUploadingPhotos}
+            >
+              <Text style={styles.photoSaveButtonText}>
+                {isUploadingPhotos ? 'Αποθήκευση...' : '💾 Αποθήκευση στο Supabase'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Success message when uploaded */}
+          {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && (
+            <View style={styles.uploadSuccessContainer}>
+              <Text style={styles.uploadSuccessText}>
+                ✓ Όλες οι φωτογραφίες αποθηκεύτηκαν επιτυχώς στο Supabase!
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* 6. Client Signature */}
@@ -1113,5 +1298,122 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  inputGroup: {
+    marginBottom: 15,
+  },
+  photoButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  photoButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    marginRight: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  photoButtonSecondary: {
+    flex: 1,
+    backgroundColor: '#555',
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  photoButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  photoPreviewContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  photoWrapper: {
+    position: 'relative',
+  },
+  photoPreview: {
+    width: 90,
+    height: 90,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removePhotoText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  photoPlaceholderText: {
+    fontSize: 13,
+    color: '#888',
+    fontStyle: 'italic',
+  },
+  photoPreviewUploaded: {
+    borderColor: '#28a745',
+    borderWidth: 2,
+  },
+  uploadedIndicator: {
+    position: 'absolute',
+    top: -8,
+    right: 25,
+    backgroundColor: '#28a745',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  uploadedIndicatorText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  photoSaveButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  photoSaveButtonDisabled: {
+    backgroundColor: '#6c757d',
+  },
+  photoSaveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  uploadSuccessContainer: {
+    backgroundColor: '#d4edda',
+    borderColor: '#c3e6cb',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  uploadSuccessText: {
+    color: '#155724',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

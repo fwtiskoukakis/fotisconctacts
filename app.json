@@ -45,7 +45,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/fleetos-logos/icon-48.svg",
+      "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [

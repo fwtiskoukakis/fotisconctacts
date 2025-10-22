@@ -8,8 +8,10 @@ import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
 import { PDFContractGenerator } from '../components/pdf-contract-generator';
 import { ImageModal } from '../components/image-modal';
+import { ContractPhotoManager } from '../components/contract-photo-manager';
 import { Contract, User } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
+import { PhotoStorageService } from '../services/photo-storage.service';
 import { supabase } from '../utils/supabase';
 import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
@@ -23,9 +25,11 @@ export default function ContractDetailsScreen() {
   const [submittingAADE, setSubmittingAADE] = React.useState(false);
   const [selectedImageUri, setSelectedImageUri] = React.useState<string | null>(null);
   const [isImageModalVisible, setIsImageModalVisible] = React.useState(false);
+  const [contractPhotos, setContractPhotos] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     loadContract();
+    loadContractPhotos();
   }, [contractId]);
 
   async function loadContract() {
@@ -59,6 +63,22 @@ export default function ContractDetailsScreen() {
         router.back();
       }
     }
+  }
+
+  async function loadContractPhotos() {
+    if (typeof contractId === 'string') {
+      try {
+        const photos = await PhotoStorageService.getContractPhotos(contractId);
+        const photoUrls = photos.map(photo => photo.photo_url).filter(Boolean);
+        setContractPhotos(photoUrls);
+      } catch (error) {
+        console.error('Error loading contract photos:', error);
+      }
+    }
+  }
+
+  function handleContractPhotosUpdated(photos: string[]) {
+    setContractPhotos(photos);
   }
 
   function handleEdit() {
@@ -267,6 +287,52 @@ export default function ContractDetailsScreen() {
               })}
             </View>
           </View>
+        )}
+
+        {/* Contract Photos Gallery */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Φωτογραφίες Συμβολαίου</Text>
+          <View style={s.card}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photosScroll}>
+              {/* Test contract photo */}
+              <TouchableOpacity 
+                onPress={() => handleViewPhoto('https://kwjtqsomuwdotfkrqbne.supabase.co/storage/v1/object/public/contract-photos/contracts/382712798_6574509045930245_3159277759435415399_n.jpg')}
+                style={s.photoThumbnail}
+                activeOpacity={0.7}
+              >
+                <Image 
+                  source={{ uri: 'https://kwjtqsomuwdotfkrqbne.supabase.co/storage/v1/object/public/contract-photos/contracts/382712798_6574509045930245_3159277759435415399_n.jpg' }} 
+                  style={s.photoImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+              
+              {/* Additional photos from database */}
+              {contractPhotos.map((photoUri, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  onPress={() => handleViewPhoto(photoUri)}
+                  style={s.photoThumbnail}
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={{ uri: photoUri }} 
+                    style={s.photoImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Contract Photos Manager */}
+        {contract && (
+          <ContractPhotoManager
+            contractId={contract.id}
+            existingPhotos={contractPhotos}
+            onPhotosUpdated={handleContractPhotosUpdated}
+          />
         )}
 
         {contract.photoUris && contract.photoUris.length > 0 && (

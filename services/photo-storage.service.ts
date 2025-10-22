@@ -31,20 +31,28 @@ export class PhotoStorageService {
     index: number
   ): Promise<UploadResult> {
     try {
+      console.log('Starting upload for contract:', contractId, 'photo:', photoUri, 'index:', index);
+
       // Read file as base64
       const base64 = await FileSystem.readAsStringAsync(photoUri, {
         encoding: 'base64',
       });
 
+      console.log('Base64 conversion successful, length:', base64.length);
+
       // Convert base64 to Blob using fetch API (React Native compatible)
       const dataUrl = `data:image/jpeg;base64,${base64}`;
       const response = await fetch(dataUrl);
       const blob = await response.blob();
-      
+
+      console.log('Blob created, size:', blob.size);
+
       // Generate unique filename
       const timestamp = Date.now();
       const fileName = `${contractId}/photo_${index}_${timestamp}.jpg`;
-      
+
+      console.log('Generated filename:', fileName);
+
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(this.BUCKET_CONTRACT_PHOTOS)
@@ -55,18 +63,24 @@ export class PhotoStorageService {
         });
 
       if (error) {
-        console.error('Error uploading contract photo:', error);
+        console.error('Error uploading to storage:', error);
         throw new Error(`Upload failed: ${error.message}`);
       }
+
+      console.log('Storage upload successful:', data);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from(this.BUCKET_CONTRACT_PHOTOS)
         .getPublicUrl(fileName);
 
+      console.log('Generated public URL:', publicUrl);
+
       // Get file info
       const fileInfo = await FileSystem.getInfoAsync(photoUri);
       const size = fileInfo.exists ? (fileInfo.size || 0) : 0;
+
+      console.log('File info:', fileInfo);
 
       return {
         url: publicUrl,
@@ -343,21 +357,29 @@ export class PhotoStorageService {
     orderIndex: number
   ): Promise<void> {
     try {
+      console.log('Saving photo metadata to database:', {
+        contract_id: contractId,
+        photo_url: photoUrl,
+        photo_type: 'general',
+        description: `Photo ${orderIndex + 1}`
+      });
+
       const { error } = await supabase
-        .from('photos')
+        .from('contract_photos')
         .insert({
           contract_id: contractId,
           photo_url: photoUrl,
-          storage_path: storagePath,
-          file_size: fileSize,
-          mime_type: 'image/jpeg',
-          order_index: orderIndex,
+          photo_type: 'general',
+          description: `Photo ${orderIndex + 1}`,
+          created_at: new Date().toISOString(),
         });
 
       if (error) {
         console.error('Error saving photo metadata:', error);
         throw new Error(`Failed to save metadata: ${error.message}`);
       }
+
+      console.log('Photo metadata saved successfully');
     } catch (error) {
       console.error('Error in savePhotoMetadata:', error);
       throw error;
@@ -372,10 +394,10 @@ export class PhotoStorageService {
   static async getContractPhotos(contractId: string): Promise<any[]> {
     try {
       const { data, error } = await supabase
-        .from('photos')
+        .from('contract_photos')
         .select('*')
         .eq('contract_id', contractId)
-        .order('order_index', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching contract photos:', error);
@@ -397,15 +419,26 @@ export class PhotoStorageService {
     try {
       // Get all photos for this contract
       const photos = await this.getContractPhotos(contractId);
-      
+
       if (photos.length > 0) {
-        // Delete from storage
-        const paths = photos.map(p => p.storage_path);
-        await this.deletePhotos(this.BUCKET_CONTRACT_PHOTOS, paths);
-        
+        // Extract storage paths from photo URLs
+        const storagePaths = photos.map(p => {
+          const url = p.photo_url;
+          if (url) {
+            // Extract the path after the bucket name in the URL
+            const pathMatch = url.match(/\/contract-photos\/(.+)/);
+            return pathMatch ? pathMatch[1] : '';
+          }
+          return '';
+        }).filter(path => path !== '');
+
+        if (storagePaths.length > 0) {
+          await this.deletePhotos(this.BUCKET_CONTRACT_PHOTOS, storagePaths);
+        }
+
         // Delete from database
         const { error } = await supabase
-          .from('photos')
+          .from('contract_photos')
           .delete()
           .eq('contract_id', contractId);
 
@@ -430,13 +463,18 @@ export class PhotoStorageService {
     contractId: string,
     photoUris: string[]
   ): Promise<UploadResult[]> {
+    console.log('Starting batch upload for contract:', contractId, 'Photos:', photoUris.length);
+
     const results: UploadResult[] = [];
     
     for (let i = 0; i < photoUris.length; i++) {
       try {
+        console.log('Uploading photo', i + 1, 'of', photoUris.length);
         const result = await this.uploadContractPhoto(contractId, photoUris[i], i);
         results.push(result);
         
+        console.log('Photo', i + 1, 'uploaded successfully:', result.url);
+
         // Save metadata to database
         await this.savePhotoMetadata(
           contractId,
@@ -445,13 +483,120 @@ export class PhotoStorageService {
           result.size,
           i
         );
+
+        console.log('Photo', i + 1, 'metadata saved successfully');
       } catch (error) {
         console.error(`Error uploading photo ${i}:`, error);
         // Continue with other photos even if one fails
       }
     }
-    
+
+    console.log('Batch upload completed. Results:', results.length);
     return results;
   }
-}
 
+  /**
+   * Upload multiple photos for a contract with photo type support
+   * @param contractId Contract ID
+   * @param photoUris Array of local photo URIs
+   * @param photoType Photo type (pickup, dropoff, damage, general)
+   * @returns Array of upload results
+   */
+  static async uploadContractPhotosWithType(
+    contractId: string,
+    photoUris: string[],
+    photoType: 'pickup' | 'dropoff' | 'damage' | 'general' = 'general'
+  ): Promise<UploadResult[]> {
+    const results: UploadResult[] = [];
+
+    for (let i = 0; i < photoUris.length; i++) {
+      try {
+        const result = await this.uploadContractPhoto(contractId, photoUris[i], i);
+        results.push(result);
+
+        // Save metadata to database with photo type
+        await this.savePhotoMetadataWithType(
+          contractId,
+          result.url,
+          result.path,
+          result.size,
+          i,
+          photoType
+        );
+      } catch (error) {
+        console.error(`Error uploading photo ${i}:`, error);
+        // Continue with other photos even if one fails
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Save photo metadata with photo type to database
+   */
+  static async savePhotoMetadataWithType(
+    contractId: string,
+    photoUrl: string,
+    storagePath: string,
+    fileSize: number,
+    orderIndex: number,
+    photoType: 'pickup' | 'dropoff' | 'damage' | 'general'
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('contract_photos')
+        .insert({
+          contract_id: contractId,
+          photo_url: photoUrl,
+          photo_type: photoType,
+          description: `${photoType.charAt(0).toUpperCase() + photoType.slice(1)} photo ${orderIndex + 1}`,
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Error saving photo metadata:', error);
+        throw new Error(`Failed to save metadata: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in savePhotoMetadataWithType:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Test Supabase connection and permissions
+   */
+  static async testConnection(): Promise<void> {
+    try {
+      console.log('Testing Supabase connection...');
+
+      // Test database connection
+      const { data: dbData, error: dbError } = await supabase
+        .from('contracts')
+        .select('id')
+        .limit(1);
+
+      if (dbError) {
+        console.error('Database connection error:', dbError);
+      } else {
+        console.log('Database connection successful');
+      }
+
+      // Test storage connection
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from(this.BUCKET_CONTRACT_PHOTOS)
+        .list('', { limit: 1 });
+
+      if (storageError) {
+        console.error('Storage connection error:', storageError);
+      } else {
+        console.log('Storage connection successful');
+      }
+
+      console.log('Connection test completed');
+    } catch (error) {
+      console.error('Connection test failed:', error);
+    }
+  }
+}
