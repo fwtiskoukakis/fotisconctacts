@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
 import { PDFContractGenerator } from '../components/pdf-contract-generator';
+import { ImageModal } from '../components/image-modal';
 import { Contract, User } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { supabase } from '../utils/supabase';
@@ -20,6 +21,8 @@ export default function ContractDetailsScreen() {
   const [contract, setContract] = React.useState<Contract | null>(null);
   const [user, setUser] = React.useState<User | null>(null);
   const [submittingAADE, setSubmittingAADE] = React.useState(false);
+  const [selectedImageUri, setSelectedImageUri] = React.useState<string | null>(null);
+  const [isImageModalVisible, setIsImageModalVisible] = React.useState(false);
 
   React.useEffect(() => {
     loadContract();
@@ -87,6 +90,11 @@ export default function ContractDetailsScreen() {
         }
       ]
     );
+  }
+
+  function handleViewPhoto(uri: string) {
+    setSelectedImageUri(uri);
+    setIsImageModalVisible(true);
   }
 
   async function handlePushToAADE() {
@@ -261,6 +269,28 @@ export default function ContractDetailsScreen() {
           </View>
         )}
 
+        {contract.photoUris && contract.photoUris.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Φωτογραφίες ({contract.photoUris.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photosScroll}>
+              {contract.photoUris.map((photoUri, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  onPress={() => handleViewPhoto(photoUri)}
+                  style={s.photoThumbnail}
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={{ uri: photoUri }} 
+                    style={s.photoImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={s.actions}>
           <TouchableOpacity style={s.btn} onPress={handleEdit}>
             <Ionicons name="create" size={18} color="#fff" />
@@ -300,6 +330,16 @@ export default function ContractDetailsScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Image Modal for viewing photos */}
+      <ImageModal
+        visible={isImageModalVisible}
+        imageUri={selectedImageUri}
+        onClose={() => {
+          setIsImageModalVisible(false);
+          setSelectedImageUri(null);
+        }}
+      />
 
       <BottomTabBar />
     </SafeAreaView>
@@ -353,5 +393,21 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
+  },
+  photosScroll: {
+    marginTop: 8,
+  },
+  photoThumbnail: {
+    width: 120,
+    height: 120,
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.background,
+    ...Shadows.sm,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
   },
 });

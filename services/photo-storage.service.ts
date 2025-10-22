@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '../utils/supabase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface UploadResult {
   url: string;
@@ -36,8 +36,10 @@ export class PhotoStorageService {
         encoding: 'base64',
       });
 
-      // Convert base64 to blob
-      const blob = this.base64ToBlob(base64, 'image/jpeg');
+      // Convert base64 to Blob using fetch API (React Native compatible)
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       
       // Generate unique filename
       const timestamp = Date.now();
@@ -94,7 +96,10 @@ export class PhotoStorageService {
         encoding: 'base64',
       });
 
-      const blob = this.base64ToBlob(base64, 'image/jpeg');
+      // Convert base64 to Blob using fetch API (React Native compatible)
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       
       const timestamp = Date.now();
       const fileName = `${vehicleId}/${photoType}_${timestamp}.jpg`;
@@ -147,7 +152,10 @@ export class PhotoStorageService {
         encoding: 'base64',
       });
 
-      const blob = this.base64ToBlob(base64, 'image/jpeg');
+      // Convert base64 to Blob using fetch API (React Native compatible)
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       
       const timestamp = Date.now();
       const fileName = `${vehicleId}/damage_${damageId}_${timestamp}.jpg`;
@@ -200,7 +208,10 @@ export class PhotoStorageService {
         encoding: 'base64',
       });
 
-      const blob = this.base64ToBlob(base64, 'image/png');
+      // Convert base64 to Blob using fetch API (React Native compatible)
+      const dataUrl = `data:image/png;base64,${base64}`;
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       
       const timestamp = Date.now();
       const fileName = `${userId}/${signatureType}_signature_${timestamp}.png`;
@@ -407,24 +418,6 @@ export class PhotoStorageService {
       console.error('Error in deleteContractPhotos:', error);
       throw error;
     }
-  }
-
-  /**
-   * Convert base64 string to Blob
-   * @param base64 Base64 string
-   * @param mimeType MIME type
-   * @returns Blob
-   */
-  private static base64ToBlob(base64: string, mimeType: string): Blob {
-    const byteString = atob(base64);
-    const arrayBuffer = new ArrayBuffer(byteString.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    for (let i = 0; i < byteString.length; i++) {
-      uint8Array[i] = byteString.charCodeAt(i);
-    }
-    
-    return new Blob([arrayBuffer], { type: mimeType });
   }
 
   /**
