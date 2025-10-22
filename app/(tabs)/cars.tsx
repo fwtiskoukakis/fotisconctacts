@@ -179,6 +179,11 @@ export default function CarsScreen() {
         renderItem={({ item: vehicle }) => {
           const config = getGridConfig(gridStyle);
           
+          // Debug logging for status
+          if (vehicle.licensePlate === 'BMZ1133') {
+            console.log(`🔍 DEBUG BMZ1133: status=${vehicle.status}, plate=${vehicle.licensePlate}`);
+          }
+          
           if (gridStyle === 'list') {
             return (
               <TouchableOpacity 
@@ -222,14 +227,7 @@ export default function CarsScreen() {
             >
               <View style={s.gridCardContent}>
                 <View style={s.gridCardHeader}>
-                  <View style={[
-                    s.statusDot, 
-                    { 
-                      backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error,
-                      borderWidth: 1,
-                      borderColor: vehicle.status === 'available' ? Colors.success : Colors.error,
-                    }
-                  ]} />
+                  <View style={[s.statusDot, { backgroundColor: vehicle.status === 'available' ? Colors.success : Colors.error }]} />
                   <TouchableOpacity
                     style={s.deleteButton}
                     onPress={(e) => {
@@ -323,9 +321,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   makeModel: { 
     fontSize: 11, 
