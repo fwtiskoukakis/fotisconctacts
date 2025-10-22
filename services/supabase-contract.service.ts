@@ -1,6 +1,7 @@
 import { supabase } from '../utils/supabase';
 import { Contract } from '../models/contract.interface';
 import { PhotoStorageService } from './photo-storage.service';
+import { VehicleService } from './vehicle.service';
 
 /**
  * Supabase Contract Service
@@ -537,6 +538,15 @@ export class SupabaseContractService {
         }
       }
 
+      // Update vehicle availability based on active contracts
+      try {
+        await VehicleService.updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract creation');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already saved
+      }
+
       return await this.mapSupabaseToContractAsync(savedContract);
     } catch (error) {
       console.error('Error in saveContract:', error);
@@ -683,6 +693,15 @@ export class SupabaseContractService {
         }
       }
 
+      // Update vehicle availability based on active contracts
+      try {
+        await VehicleService.updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract update');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already updated
+      }
+
       return await this.mapSupabaseToContractAsync(updatedContract);
     } catch (error) {
       console.error('Error in updateContract:', error);
@@ -703,6 +722,15 @@ export class SupabaseContractService {
       if (error) {
         console.error('Error deleting contract:', error);
         throw error;
+      }
+
+      // Update vehicle availability based on active contracts
+      try {
+        await VehicleService.updateVehicleAvailability();
+        console.log('✅ Updated vehicle availability after contract deletion');
+      } catch (error) {
+        console.error('Error updating vehicle availability:', error);
+        // Don't throw, contract is already deleted
       }
     } catch (error) {
       console.error('Error in deleteContract:', error);

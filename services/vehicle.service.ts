@@ -5,6 +5,7 @@
 
 import { supabase } from '../utils/supabase';
 import {  Vehicle, VehicleDamageHistoryItem, VehicleSummary } from '../models/vehicle.interface';
+import { SupabaseContractService } from './supabase-contract.service';
 
 /**
  * Converts a database row to a Vehicle object
@@ -307,6 +308,82 @@ export class VehicleService {
     }
 
     return data ? data.map(convertRowToVehicle) : [];
+  }
+
+  /**
+   * Update vehicle availability based on active contracts
+   * Cars with active contracts are marked as 'rented', others as 'available'
+   */
+  static async updateVehicleAvailability(): Promise<void> {
+    try {
+      console.log('🔄 Updating vehicle availability based on active contracts...');
+      
+      // Get all active contracts
+      const activeContracts = await SupabaseContractService.getActiveContracts();
+      const rentedPlateNumbers = activeContracts.map(contract => contract.carInfo.licensePlate);
+      
+      console.log(`📋 Found ${activeContracts.length} active contracts`);
+      console.log(`🚗 Rented plate numbers:`, rentedPlateNumbers);
+      
+      // Get all vehicles
+      const { data: vehicles, error: vehiclesError } = await supabase
+        .from('cars')
+        .select('id, license_plate, status');
+      
+      if (vehiclesError) {
+        console.error('Error fetching vehicles:', vehiclesError);
+        throw new Error(`Failed to fetch vehicles: ${vehiclesError.message}`);
+      }
+      
+      if (!vehicles) {
+        console.log('No vehicles found');
+        return;
+      }
+      
+      // Update vehicle statuses
+      const updates = vehicles.map(vehicle => {
+        const isRented = rentedPlateNumbers.includes(vehicle.license_plate);
+        const newStatus = isRented ? 'rented' : 'available';
+        
+        // Only update if status actually changed
+        if (vehicle.status !== newStatus) {
+          console.log(`🔄 Updating ${vehicle.license_plate}: ${vehicle.status} → ${newStatus}`);
+          return supabase
+            .from('cars')
+            .update({ status: newStatus })
+            .eq('id', vehicle.id);
+        }
+        return null;
+      }).filter(Boolean);
+      
+      if (updates.length > 0) {
+        await Promise.all(updates);
+        console.log(`✅ Updated ${updates.length} vehicle statuses`);
+      } else {
+        console.log('✅ All vehicle statuses are already up to date');
+      }
+      
+    } catch (error) {
+      console.error('Error updating vehicle availability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get vehicles with updated availability status
+   * This method automatically updates availability before returning vehicles
+   */
+  static async getAllVehiclesWithUpdatedAvailability(): Promise<Vehicle[]> {
+    try {
+      // First update availability based on active contracts
+      await this.updateVehicleAvailability();
+      
+      // Then return all vehicles with updated status
+      return await this.getAllVehicles();
+    } catch (error) {
+      console.error('Error getting vehicles with updated availability:', error);
+      throw error;
+    }
   }
 }
 

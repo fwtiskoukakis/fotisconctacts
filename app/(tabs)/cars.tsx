@@ -58,7 +58,7 @@ export default function CarsScreen() {
 
   async function loadCars() {
     try {
-      const data = await VehicleService.getAllVehicles();
+      const data = await VehicleService.getAllVehiclesWithUpdatedAvailability();
       setVehicles(data);
     } catch (error) {
       console.error('Error loading vehicles:', error);
