@@ -8,7 +8,7 @@ import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
 import { PDFContractGenerator } from '../components/pdf-contract-generator';
 import { ImageModal } from '../components/image-modal';
-import { ContractPhotoManager } from '../components/contract-photo-manager';
+import { ContractPhotoButton } from '../components/contract-photo-button';
 import { Contract, User } from '../models/contract.interface';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { PhotoStorageService } from '../services/photo-storage.service';
@@ -289,73 +289,14 @@ export default function ContractDetailsScreen() {
           </View>
         )}
 
-        {/* Contract Photos Gallery */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Φωτογραφίες Συμβολαίου</Text>
-          <View style={s.card}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photosScroll}>
-              {/* Test contract photo */}
-              <TouchableOpacity 
-                onPress={() => handleViewPhoto('https://kwjtqsomuwdotfkrqbne.supabase.co/storage/v1/object/public/contract-photos/contracts/382712798_6574509045930245_3159277759435415399_n.jpg')}
-                style={s.photoThumbnail}
-                activeOpacity={0.7}
-              >
-                <Image 
-                  source={{ uri: 'https://kwjtqsomuwdotfkrqbne.supabase.co/storage/v1/object/public/contract-photos/contracts/382712798_6574509045930245_3159277759435415399_n.jpg' }} 
-                  style={s.photoImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-              
-              {/* Additional photos from database */}
-              {contractPhotos.map((photoUri, idx) => (
-                <TouchableOpacity 
-                  key={idx} 
-                  onPress={() => handleViewPhoto(photoUri)}
-                  style={s.photoThumbnail}
-                  activeOpacity={0.7}
-                >
-                  <Image 
-                    source={{ uri: photoUri }} 
-                    style={s.photoImage}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Contract Photos Manager */}
+        {/* Contract Photos */}
         {contract && (
-          <ContractPhotoManager
+          <ContractPhotoButton
             contractId={contract.id}
-            existingPhotos={contractPhotos}
-            onPhotosUpdated={handleContractPhotosUpdated}
+            onPhotosUpdated={(count) => console.log(`Contract has ${count} photos`)}
           />
         )}
 
-        {contract.photoUris && contract.photoUris.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Φωτογραφίες ({contract.photoUris.length})</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photosScroll}>
-              {contract.photoUris.map((photoUri, idx) => (
-                <TouchableOpacity 
-                  key={idx} 
-                  onPress={() => handleViewPhoto(photoUri)}
-                  style={s.photoThumbnail}
-                  activeOpacity={0.7}
-                >
-                  <Image 
-                    source={{ uri: photoUri }} 
-                    style={s.photoImage}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
         <View style={s.actions}>
           <TouchableOpacity style={s.btn} onPress={handleEdit}>

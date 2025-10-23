@@ -101,6 +101,15 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🧪 Developer / Test</Text>
+          <View style={s.card}>
+            <SettingItem icon="camera" label="📸 Contract Photo Upload Test" onPress={() => router.push('/contract-photo-upload-test')} />
+            <SettingItem icon="flask" label="🎨 Dark Mode Test" onPress={() => router.push('/dark-mode-test')} />
+            <SettingItem icon="document" label="📄 Contract Photo Test" onPress={() => router.push('/contract-photo-test')} />
+          </View>
+        </View>
+
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
           <Ionicons name="log-out" size={20} color={Colors.error} />
           <Text style={s.signOutText}>Αποσύνδεση</Text>

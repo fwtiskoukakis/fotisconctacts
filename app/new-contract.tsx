@@ -19,6 +19,7 @@ import { ContractTemplate } from '../models/contract-template.interface';
 import { SignaturePad } from '../components/signature-pad';
 import { CarDiagram } from '../components/car-diagram';
 import { ContractTemplateSelector } from '../components/contract-template-selector';
+import { ContractPhotoUploader } from '../components/contract-photo-uploader';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { AuthService } from '../services/auth.service';
 import { PhotoStorageService } from '../services/photo-storage.service';
@@ -88,6 +89,7 @@ export default function NewContractScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [previousDamages, setPreviousDamages] = useState<any[]>([]);
   const [isLoadingVehicle, setIsLoadingVehicle] = useState(false);
+  const [savedContractId, setSavedContractId] = useState<string | null>(null);
 
   // Date picker states
   const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
@@ -460,14 +462,16 @@ export default function NewContractScreen() {
 
       await SupabaseContractService.saveContract(contract);
 
+      // Save the contract ID for photo uploads
+      setSavedContractId(contract.id);
+
       // Clear uploaded photo URLs since they're now saved with the contract
       setUploadedPhotoUrls([]);
       setPhotos([]);
 
-      Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς!', [
+      Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς! Μπορείτε τώρα να προσθέσετε φωτογραφίες.', [
         {
-          text: 'OK',
-          onPress: () => router.push('/(tabs)/')
+          text: 'OK'
         }
       ]);
     } catch (error) {
@@ -778,72 +782,10 @@ export default function NewContractScreen() {
         </View>
 
         {/* 5. Photos - Compact */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>5. Φωτογραφίες</Text>
-
-          {/* Buttons */}
-          <View style={styles.photoButtonsContainer}>
-            <TouchableOpacity style={styles.photoButton} onPress={handleCapturePhoto}>
-              <Text style={styles.photoButtonText}>📸 Νέα Φωτογραφία</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.photoButtonSecondary} onPress={handleUploadFromGallery}>
-              <Text style={styles.photoButtonText}>🖼️ Από Gallery</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Preview */}
-          <View style={styles.photoPreviewContainer}>
-            {photos.length > 0 ? (
-              photos.map((uri, index) => (
-                <View key={index} style={styles.photoWrapper}>
-                  <Image
-                    source={{ uri }}
-                    style={[
-                      styles.photoPreview,
-                      uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && styles.photoPreviewUploaded
-                    ]}
-                  />
-                  {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && (
-                    <View style={styles.uploadedIndicator}>
-                      <Text style={styles.uploadedIndicatorText}>✓</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={styles.removePhotoButton}
-                    onPress={() => removePhoto(index)}
-                  >
-                    <Text style={styles.removePhotoText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.photoPlaceholderText}>Δεν υπάρχουν φωτογραφίες ακόμα</Text>
-            )}
-          </View>
-
-          {/* Save to Supabase Button */}
-          {photos.length > 0 && uploadedPhotoUrls.length !== photos.length && (
-            <TouchableOpacity
-              style={[styles.photoSaveButton, isUploadingPhotos && styles.photoSaveButtonDisabled]}
-              onPress={handleSavePhotosToStorage}
-              disabled={isUploadingPhotos}
-            >
-              <Text style={styles.photoSaveButtonText}>
-                {isUploadingPhotos ? 'Αποθήκευση...' : '💾 Αποθήκευση στο Supabase'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Success message when uploaded */}
-          {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === photos.length && (
-            <View style={styles.uploadSuccessContainer}>
-              <Text style={styles.uploadSuccessText}>
-                ✓ Όλες οι φωτογραφίες αποθηκεύτηκαν επιτυχώς στο Supabase!
-              </Text>
-            </View>
-          )}
-        </View>
+        <ContractPhotoUploader
+          contractId={savedContractId}
+          onPhotosChanged={(count) => console.log(`Contract has ${count} photos`)}
+        />
 
         {/* 6. Client Signature */}
         <View style={styles.section}>

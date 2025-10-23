@@ -19,6 +19,7 @@ import { CarDiagram } from '../components/car-diagram';
 import { PhotoStorageService } from '../services/photo-storage.service';
 import { SupabaseContractService } from '../services/supabase-contract.service';
 import { ImageModal } from '../components/image-modal';
+import { ContractPhotoUploader } from '../components/contract-photo-uploader';
 import * as ImagePicker from 'expo-image-picker';
 import { format } from 'date-fns';
 
@@ -717,83 +718,10 @@ export default function EditContractScreen() {
         </View>
 
         {/* 5. Photos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>5. Φωτογραφίες</Text>
-
-          {/* Buttons */}
-          <View style={styles.photoButtonsContainer}>
-            <TouchableOpacity style={styles.photoButton} onPress={handleCapturePhoto}>
-              <Text style={styles.photoButtonText}>📸 Νέα Φωτογραφία</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.photoButtonSecondary} onPress={handleUploadFromGallery}>
-              <Text style={styles.photoButtonText}>🖼️ Από Gallery</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Existing Photos */}
-          {contract.photoUris.length > 0 && (
-            <View style={styles.photoPreviewContainer}>
-              <Text style={styles.photoSectionLabel}>Υπάρχουσες Φωτογραφίες:</Text>
-              {contract.photoUris.map((uri, index) => (
-                <View key={`existing-${index}`} style={styles.photoWrapper}>
-                  <Image source={{ uri }} style={styles.photoPreview} />
-                  <TouchableOpacity
-                    onPress={() => handleImagePress(uri)}
-                    style={styles.viewPhotoButton}
-                  >
-                    <Text style={styles.viewPhotoText}>👁️</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* New Photos Preview */}
-          {newPhotos.length > 0 && (
-            <View style={styles.photoPreviewContainer}>
-              <Text style={styles.photoSectionLabel}>Νέες Φωτογραφίες:</Text>
-              {newPhotos.map((uri, index) => (
-                <View key={`new-${index}`} style={styles.photoWrapper}>
-                  <Image source={{ uri }} style={styles.photoPreview} />
-                  <TouchableOpacity
-                    style={styles.removePhotoButton}
-                    onPress={() => removeNewPhoto(index)}
-                  >
-                    <Text style={styles.removePhotoText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Save to Supabase Button */}
-          {newPhotos.length > 0 && (
-            <TouchableOpacity
-              style={[styles.photoSaveButton, isUploadingPhotos && styles.photoSaveButtonDisabled]}
-              onPress={handleSavePhotosToStorage}
-              disabled={isUploadingPhotos}
-            >
-              <Text style={styles.photoSaveButtonText}>
-                {isUploadingPhotos ? 'Αποθήκευση...' : '💾 Αποθήκευση στο Supabase'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Success message when uploaded */}
-          {uploadedPhotoUrls.length > 0 && uploadedPhotoUrls.length === newPhotos.length && newPhotos.length > 0 && (
-            <View style={styles.uploadSuccessContainer}>
-              <Text style={styles.uploadSuccessText}>
-                ✓ Όλες οι νέες φωτογραφίες αποθηκεύτηκαν επιτυχώς στο Supabase!
-              </Text>
-            </View>
-          )}
-
-          {/* No photos message */}
-          {contract.photoUris.length === 0 && newPhotos.length === 0 && (
-            <Text style={styles.photoPlaceholderText}>Δεν υπάρχουν φωτογραφίες ακόμα</Text>
-          )}
-        </View>
+        <ContractPhotoUploader
+          contractId={contract.id}
+          onPhotosChanged={(count) => console.log(`Contract has ${count} photos`)}
+        />
 
         {/* Save Button (Bottom) */}
         <TouchableOpacity
