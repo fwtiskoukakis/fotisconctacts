@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { PhotoStorageService } from '../services/photo-storage.service';
 import { LinearGradient } from 'react-native-linear-gradient';
@@ -45,8 +45,13 @@ function generateUUID(): string {
 }
 
 export default function ContractPhotoUploadTestScreen() {
-  // Use real contract ID for testing - this contract exists in the database
-  const [contractId, setContractId] = useState<string>('601ad6bd-a803-409e-984b-997c9a6b72d8');
+  // Get contract ID from navigation params, or use default for testing
+  const params = useLocalSearchParams();
+  const paramContractId = params.contractId as string | undefined;
+  
+  const [contractId, setContractId] = useState<string>(
+    paramContractId || '601ad6bd-a803-409e-984b-997c9a6b72d8'
+  );
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [galleryPhotos, setGalleryPhotos] = useState<any[]>([]);
@@ -55,7 +60,11 @@ export default function ContractPhotoUploadTestScreen() {
 
   useEffect(() => {
     requestPermissions();
-  }, []);
+    // If we have a contract ID from params, automatically load existing photos
+    if (paramContractId) {
+      loadGalleryPhotos();
+    }
+  }, [paramContractId]);
 
   /**
    * Request camera and media library permissions
@@ -271,44 +280,64 @@ export default function ContractPhotoUploadTestScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← Πίσω</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>📸 Photo Upload Test</Text>
-          <Text style={styles.subtitle}>Contract Photo Upload & Gallery</Text>
+          <Text style={styles.title}>
+            {paramContractId ? '📸 Φωτογραφίες Συμβολαίου' : '📸 Photo Upload Test'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {paramContractId 
+              ? 'Προσθέστε φωτογραφίες στο συμβόλαιό σας' 
+              : 'Contract Photo Upload & Gallery'
+            }
+          </Text>
         </View>
 
         {/* Contract ID Input */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contract ID</Text>
+          <Text style={styles.sectionTitle}>
+            {paramContractId ? 'Κωδικός Συμβολαίου' : 'Contract ID'}
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, paramContractId && styles.inputDisabled]}
             value={contractId}
             onChangeText={setContractId}
             placeholder="Enter contract ID"
             placeholderTextColor="#94a3b8"
+            editable={!paramContractId}
           />
-          <Text style={styles.hint}>
-            ✅ This is a real contract ID from your database. Photos will upload to storage AND save metadata to the database!
-          </Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.generateButton}
-              onPress={() => setContractId(generateUUID())}
-            >
-              <Text style={styles.generateButtonText}>🔄 Random UUID</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.generateButton}
-              onPress={() => setContractId('601ad6bd-a803-409e-984b-997c9a6b72d8')}
-            >
-              <Text style={styles.generateButtonText}>🔙 Reset to Real ID</Text>
-            </TouchableOpacity>
-          </View>
+          {paramContractId ? (
+            <Text style={styles.hint}>
+              ✅ Αυτό είναι το συμβόλαιο που μόλις δημιουργήσατε. Προσθέστε φωτογραφίες παρακάτω!
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.hint}>
+                ✅ This is a real contract ID from your database. Photos will upload to storage AND save metadata to the database!
+              </Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={styles.generateButton}
+                  onPress={() => setContractId(generateUUID())}
+                >
+                  <Text style={styles.generateButtonText}>🔄 Random UUID</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.generateButton}
+                  onPress={() => setContractId('601ad6bd-a803-409e-984b-997c9a6b72d8')}
+                >
+                  <Text style={styles.generateButtonText}>🔙 Reset to Real ID</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Action Buttons */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Add Photos</Text>
+          <Text style={styles.sectionTitle}>
+            {paramContractId ? 'Προσθήκη Φωτογραφιών' : 'Add Photos'}
+          </Text>
           
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -317,7 +346,9 @@ export default function ContractPhotoUploadTestScreen() {
               disabled={isUploading}
             >
               <Text style={styles.actionButtonIcon}>📷</Text>
-              <Text style={styles.actionButtonText}>Camera</Text>
+              <Text style={styles.actionButtonText}>
+                {paramContractId ? 'Κάμερα' : 'Camera'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -326,7 +357,9 @@ export default function ContractPhotoUploadTestScreen() {
               disabled={isUploading}
             >
               <Text style={styles.actionButtonIcon}>🖼️</Text>
-              <Text style={styles.actionButtonText}>Gallery</Text>
+              <Text style={styles.actionButtonText}>
+                {paramContractId ? 'Συλλογή' : 'Gallery'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -336,10 +369,15 @@ export default function ContractPhotoUploadTestScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                Preview ({photos.length} photo{photos.length !== 1 ? 's' : ''})
+                {paramContractId 
+                  ? `Προεπισκόπηση (${photos.length} φωτογραφί${photos.length !== 1 ? 'ες' : 'α'})`
+                  : `Preview (${photos.length} photo${photos.length !== 1 ? 's' : ''})`
+                }
               </Text>
               <TouchableOpacity onPress={handleClearPhotos}>
-                <Text style={styles.clearButton}>Clear All</Text>
+                <Text style={styles.clearButton}>
+                  {paramContractId ? 'Καθαρισμός' : 'Clear All'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -378,7 +416,10 @@ export default function ContractPhotoUploadTestScreen() {
                 <>
                   <Text style={styles.uploadButtonIcon}>☁️</Text>
                   <Text style={styles.uploadButtonText}>
-                    Upload to Supabase Storage
+                    {paramContractId 
+                      ? 'Ανέβασμα Φωτογραφιών' 
+                      : 'Upload to Supabase Storage'
+                    }
                   </Text>
                 </>
               )}
@@ -390,14 +431,17 @@ export default function ContractPhotoUploadTestScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Gallery ({galleryPhotos.length} photo{galleryPhotos.length !== 1 ? 's' : ''})
+              {paramContractId
+                ? `Αποθηκευμένες Φωτογραφίες (${galleryPhotos.length})`
+                : `Gallery (${galleryPhotos.length} photo${galleryPhotos.length !== 1 ? 's' : ''})`
+              }
             </Text>
             <TouchableOpacity
               onPress={loadGalleryPhotos}
               disabled={isLoadingGallery}
             >
               <Text style={styles.refreshButton}>
-                {isLoadingGallery ? '⏳' : '🔄'} Refresh
+                {isLoadingGallery ? '⏳' : '🔄'} {paramContractId ? 'Ανανέωση' : 'Refresh'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -429,9 +473,14 @@ export default function ContractPhotoUploadTestScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateIcon}>📷</Text>
-              <Text style={styles.emptyStateText}>No photos yet</Text>
+              <Text style={styles.emptyStateText}>
+                {paramContractId ? 'Δεν υπάρχουν φωτογραφίες ακόμα' : 'No photos yet'}
+              </Text>
               <Text style={styles.emptyStateSubtext}>
-                Upload photos and tap refresh to see them here
+                {paramContractId 
+                  ? 'Ανεβάστε φωτογραφίες και πατήστε ανανέωση για να τις δείτε εδώ'
+                  : 'Upload photos and tap refresh to see them here'
+                }
               </Text>
             </View>
           )}
@@ -551,6 +600,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#475569',
+  },
+  inputDisabled: {
+    backgroundColor: '#1e293b',
+    borderColor: '#10b981',
+    borderWidth: 2,
   },
   hint: {
     marginTop: 8,

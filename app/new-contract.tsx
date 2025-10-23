@@ -469,11 +469,33 @@ export default function NewContractScreen() {
       setUploadedPhotoUrls([]);
       setPhotos([]);
 
-      Alert.alert('Επιτυχία', 'Το συμβόλαιο αποθηκεύτηκε επιτυχώς! Μπορείτε τώρα να προσθέσετε φωτογραφίες.', [
-        {
-          text: 'OK'
-        }
-      ]);
+      Alert.alert(
+        'Επιτυχία', 
+        'Το συμβόλαιο αποθηκεύτηκε επιτυχώς! Θέλετε να προσθέσετε φωτογραφίες τώρα;', 
+        [
+          {
+            text: 'Αργότερα',
+            style: 'cancel',
+            onPress: () => {
+              // Navigate to contract details to view the contract
+              router.replace({
+                pathname: '/contract-details',
+                params: { contractId: contract.id }
+              });
+            }
+          },
+          {
+            text: 'Προσθήκη Φωτογραφιών',
+            onPress: () => {
+              // Navigate to dedicated photo upload screen
+              router.push({
+                pathname: '/contract-add-photos',
+                params: { contractId: contract.id }
+              });
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error saving contract:', error);
       Alert.alert('Σφάλμα', `Αποτυχία αποθήκευσης συμβολαίου: ${error}`);
