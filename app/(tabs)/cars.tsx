@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumb } from '../../components/breadcrumb';
 import { SimpleGlassCard } from '../../components/glass-card';
 import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
@@ -114,14 +115,12 @@ export default function CarsScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={s.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={s.breadcrumbCurrent}>Αυτοκίνητα</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Στόλος' },
+        ]}
+      />
 
       <View style={s.topBar}>
         <View style={s.searchBox}>
@@ -158,7 +157,7 @@ export default function CarsScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters}>
-          {([['all', 'Όλα'], ['available', 'Διαθέσιμα'], ['rented', 'Ενοικιασμένα'], ['maintenance', 'Συντήρηση']] as const).map(([f, label]) => (
+          {([['all', 'Ολα'], ['available', 'Διαθέσιμα'], ['rented', 'Ενοικιασμένα'], ['maintenance', 'Συντήρηση']] as const).map(([f, label]) => (
             <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
               <Text style={[s.filterText, filter === f && s.filterTextActive]}>
                 {label} ({f === 'all' ? vehicles.length : vehicles.filter(c => c.status === f).length})
@@ -275,10 +274,6 @@ export default function CarsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   topBar: { backgroundColor: '#fff', padding: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, height: 36, marginBottom: 8, gap: 6 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text },

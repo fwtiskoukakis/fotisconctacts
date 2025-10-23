@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
+import { Breadcrumb } from '../components/breadcrumb';
 import { SimpleGlassCard } from '../components/glass-card';
 import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
@@ -147,18 +148,13 @@ export default function CarDetailsScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <AppHeader title="Λεπτομέρειες Αυτοκινήτου" showBack={true} showActions={true} />
 
-      <View style={s.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={s.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <TouchableOpacity onPress={() => router.push('/cars')} style={s.breadcrumbItem}>
-          <Text style={s.breadcrumbText}>Αυτοκίνητα</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={s.breadcrumbCurrent}>{car.licensePlate}</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Στόλος', path: '/cars' },
+          { label: car.licensePlate },
+        ]}
+      />
 
       <ScrollView style={s.content} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={s.statusCard}>
@@ -169,9 +165,9 @@ export default function CarDetailsScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Πληροφορίες</Text>
           <View style={s.card}>
-            <InfoRow icon="car" label="Όχημα" value={car.makeModel} />
+            <InfoRow icon="car" label="Οχημα" value={car.makeModel} />
             <InfoRow icon="pricetag" label="Πινακίδα" value={car.licensePlate} />
-            <InfoRow icon="calendar" label="Έτος" value={car.year.toString()} />
+            <InfoRow icon="calendar" label="Ετος" value={car.year.toString()} />
             <InfoRow icon="flash" label="Καύσιμο" value={car.fuelType} />
             <InfoRow icon="settings" label="Κιβώτιο" value={car.transmission} />
             <InfoRow icon="people" label="Θέσεις" value={car.seats.toString()} />
@@ -190,7 +186,7 @@ export default function CarDetailsScreen() {
             <View style={[s.statCard, { backgroundColor: Colors.success + '15' }]}>
               <Ionicons name="trending-up" size={24} color={Colors.success} />
               <Text style={[s.statValue, { color: Colors.success }]}>€{stats.totalRevenue}</Text>
-              <Text style={s.statLabel}>Έσοδα</Text>
+              <Text style={s.statLabel}>Εσοδα</Text>
             </View>
             <View style={[s.statCard, { backgroundColor: Colors.error + '15' }]}>
               <Ionicons name="warning" size={24} color={Colors.error} />
@@ -228,10 +224,6 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 14, color: Colors.textSecondary },
-  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   content: { flex: 1, padding: 8 },
   statusCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, ...Shadows.sm },
   statusDot: { width: 10, height: 10, borderRadius: 5 },

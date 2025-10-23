@@ -86,7 +86,7 @@ export default function VehicleDetailsScreen() {
 
   function getCategoryLabel(category: string): string {
     switch (category) {
-      case 'car': return 'Αυτοκίνητο';
+      case 'car': return 'Οχημα';
       case 'atv': return 'ATV';
       case 'scooter': return 'Scooter';
       case 'motorcycle': return 'Μοτοσικλέτα';

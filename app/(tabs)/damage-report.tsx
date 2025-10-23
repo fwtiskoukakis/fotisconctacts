@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumb } from '../../components/breadcrumb';
 import { SimpleGlassCard } from '../../components/glass-card';
 import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
@@ -126,14 +127,12 @@ export default function DamageReportScreen() {
   return (
     <View style={s.container}>
 
-      <View style={s.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={s.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={s.breadcrumbCurrent}>Ζημιές</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Ζημιές' },
+        ]}
+      />
 
       {/* Stats */}
       <View style={s.stats}>
@@ -198,10 +197,6 @@ export default function DamageReportScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   stats: { flexDirection: 'row', padding: 8, gap: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   stat: { flex: 1, padding: 8, borderRadius: 8, alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '700', marginBottom: 2 },

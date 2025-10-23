@@ -41,7 +41,7 @@ const tabs: TabItem[] = [
   },
   {
     key: 'cars',
-    label: 'Αυτοκίνητα',
+    label: 'Στόλος',
     icon: 'car-sport',
     route: '/cars',
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     right: 4,
     bottom: 4,
     borderRadius: 20,
-    borderWidth: 1,
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
   },
   tabContent: {
     alignItems: 'center',

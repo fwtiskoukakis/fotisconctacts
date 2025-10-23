@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
+import { Breadcrumb } from '../components/breadcrumb';
 import { Colors, Typography, Spacing, BorderRadius } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 
@@ -42,7 +43,7 @@ export default function NotificationsScreen() {
       {
         id: '1',
         title: 'Νέο Συμβόλαιο',
-        message: 'Ένα νέο συμβόλαιο ενοικίασης έχει δημιουργηθεί για το όχημα Toyota Corolla',
+        message: 'Ενα νέο συμβόλαιο ενοικίασης έχει δημιουργηθεί για το όχημα Toyota Corolla',
         type: 'success',
         timestamp: new Date(Date.now() - 1000 * 60 * 30),
         read: false,
@@ -169,14 +170,12 @@ export default function NotificationsScreen() {
       <AppHeader title="Ειδοποιήσεις" showBack={true} showActions={true} />
 
       {/* Breadcrumb */}
-      <View style={styles.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={styles.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={styles.breadcrumbCurrent}>Ειδοποιήσεις</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Ειδοποιήσεις' },
+        ]}
+      />
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -185,7 +184,7 @@ export default function NotificationsScreen() {
           onPress={() => setFilter('all')}
         >
           <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-            Όλες ({notifications.length})
+            Ολες ({notifications.length})
           </Text>
         </TouchableOpacity>
 
@@ -201,7 +200,7 @@ export default function NotificationsScreen() {
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
             <Ionicons name="checkmark-done" size={18} color={Colors.primary} />
-            <Text style={styles.markAllText}>Όλα ως διαβασμένα</Text>
+            <Text style={styles.markAllText}>Ολα ως διαβασμένα</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -218,7 +217,7 @@ export default function NotificationsScreen() {
             <Text style={styles.emptyTitle}>Δεν υπάρχουν ειδοποιήσεις</Text>
             <Text style={styles.emptySubtitle}>
               {filter === 'unread'
-                ? 'Όλες οι ειδοποιήσεις έχουν διαβαστεί'
+                ? 'Ολες οι ειδοποιήσεις έχουν διαβαστεί'
                 : 'Θα ειδοποιηθείτε για σημαντικά γεγονότα'}
             </Text>
           </View>
@@ -283,31 +282,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  breadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 6,
-  },
-  breadcrumbItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  breadcrumbCurrent: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
   },
   filterContainer: {
     flexDirection: 'row',

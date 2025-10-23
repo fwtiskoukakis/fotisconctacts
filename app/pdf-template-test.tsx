@@ -185,7 +185,7 @@ export default function PDFTemplateTestScreen() {
             <View style={styles.contractInfoRow}>
               <Ionicons name="car" size={20} color={Colors.primary} />
               <Text style={styles.contractInfoText}>
-                Όχημα: {contract.carInfo.makeModel} - {contract.carInfo.licensePlate}
+                Οχημα: {contract.carInfo.makeModel} - {contract.carInfo.licensePlate}
               </Text>
             </View>
             <Text style={styles.contractId}>ID: {contract.id}</Text>
@@ -240,7 +240,7 @@ export default function PDFTemplateTestScreen() {
         <View style={styles.infoBox}>
           <Ionicons name="information-circle" size={24} color="#3498db" />
           <Text style={styles.infoText}>
-            Όλα τα πρότυπα περιλαμβάνουν:{'\n'}
+            Ολα τα πρότυπα περιλαμβάνουν:{'\n'}
             • FleetOS logo και όνομα στο footer{'\n'}
             • Contract ID ως watermark{'\n'}
             • QR code για επαλήθευση{'\n'}

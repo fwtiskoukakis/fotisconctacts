@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
+import { Breadcrumb } from '../components/breadcrumb';
 import { Colors, Typography, Shadows } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 import { supabase } from '../utils/supabase';
@@ -169,20 +170,15 @@ export default function DamageDetailsScreen() {
         showActions
       />
 
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Ζημιές', path: '/damage-report' },
+          { label: 'Λεπτομέρειες' },
+        ]}
+      />
+
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} {...smoothScrollConfig}>
-        {/* Breadcrumb */}
-        <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.breadcrumbItem}>
-            <Ionicons name="home" size={14} color={Colors.primary} />
-            <Text style={styles.breadcrumbText}>Αρχική</Text>
-          </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-          <TouchableOpacity onPress={() => router.push('/(tabs)/damage-report')} style={styles.breadcrumbItem}>
-            <Text style={styles.breadcrumbText}>Ζημιές</Text>
-          </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-          <Text style={styles.breadcrumbCurrent}>Λεπτομέρειες</Text>
-        </View>
 
         {/* Severity Badge */}
         <View style={[styles.severityBanner, { backgroundColor: getSeverityColor(damage.severity) + '20' }]}>
@@ -210,7 +206,7 @@ export default function DamageDetailsScreen() {
             <Text style={styles.value}>{damage.carLicensePlate}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Όχημα:</Text>
+            <Text style={styles.label}>Οχημα:</Text>
             <Text style={styles.value}>{damage.carMakeModel}</Text>
           </View>
           <View style={styles.infoRow}>
@@ -302,31 +298,6 @@ const styles = StyleSheet.create({
   loadingText: {
     ...Typography.body,
     color: Colors.textSecondary,
-  },
-  breadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 6,
-  },
-  breadcrumbItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  breadcrumbCurrent: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
   },
   severityBanner: {
     margin: 12,

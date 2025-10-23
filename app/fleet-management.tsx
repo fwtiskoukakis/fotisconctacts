@@ -195,7 +195,7 @@ export default function FleetManagementScreen() {
 
   function getCategoryLabel(category: string): string {
     switch (category) {
-      case 'car': return 'Αυτοκίνητο';
+      case 'car': return 'Οχημα';
       case 'atv': return 'ATV';
       case 'scooter': return 'Scooter';
       case 'motorcycle': return 'Μοτοσικλέτα';
@@ -284,7 +284,7 @@ export default function FleetManagementScreen() {
             <TouchableOpacity onPress={() => setShowAddVehicleModal(false)}>
               <Text style={styles.modalCancelButton}>Ακύρωση</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Νέο Όχημα</Text>
+            <Text style={styles.modalTitle}>Νέο Οχημα</Text>
             <TouchableOpacity onPress={addVehicle}>
               <Text style={styles.modalSaveButton}>Προσθήκη</Text>
             </TouchableOpacity>
@@ -341,7 +341,7 @@ export default function FleetManagementScreen() {
                 <Text style={styles.inputLabel}>Κατηγορία</Text>
                 <View style={styles.categoryOptions}>
                   {[
-                    { value: 'car', label: 'Αυτοκίνητο' },
+                    { value: 'car', label: 'Οχημα' },
                     { value: 'atv', label: 'ATV' },
                     { value: 'scooter', label: 'Scooter' },
                     { value: 'motorcycle', label: 'Μοτοσικλέτα' },
@@ -550,7 +550,7 @@ export default function FleetManagementScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
             <View style={styles.filtersRow}>
               {[
-                { value: 'all', label: 'Όλα' },
+                { value: 'all', label: 'Ολα' },
                 { value: 'available', label: 'Διαθέσιμα' },
                 { value: 'rented', label: 'Ενοικιασμένα' },
                 { value: 'maintenance', label: 'Συντήρηση' },

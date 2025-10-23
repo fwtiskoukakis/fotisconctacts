@@ -414,7 +414,7 @@ export default function HomeScreen() {
                 <Ionicons name="trending-up" size={28} color={Colors.success} />
               </View>
               <View>
-                <Text style={styles.revenueLabel}>Συνολικά Έσοδα</Text>
+                <Text style={styles.revenueLabel}>Συνολικά Εσοδα</Text>
                 <Text style={styles.revenueValue}>€{stats.totalRevenue.toLocaleString()}</Text>
               </View>
             </View>
@@ -454,7 +454,7 @@ export default function HomeScreen() {
         {/* Filters */}
         <View style={styles.filtersSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
-            {renderFilterButton('all', 'Όλα', 'grid-outline')}
+            {renderFilterButton('all', 'Ολα', 'grid-outline')}
             {renderFilterButton('active', 'Ενεργά', 'checkmark-circle-outline')}
             {renderFilterButton('upcoming', 'Επερχόμενα', 'time-outline')}
             {renderFilterButton('completed', 'Ολοκληρωμένα', 'checkmark-done-outline')}

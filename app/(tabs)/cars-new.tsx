@@ -187,7 +187,7 @@ export default function CarsScreen() {
           <TextInput style={s.searchInput} placeholder="Αναζήτηση..." value={search} onChangeText={setSearch} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters}>
-          {([['all', 'Όλα'], ['available', 'Διαθέσιμα'], ['rented', 'Μη Διαθέσιμα']] as const).map(([f, label]) => (
+          {([['all', 'Ολα'], ['available', 'Διαθέσιμα'], ['rented', 'Μη Διαθέσιμα']] as const).map(([f, label]) => (
             <TouchableOpacity key={f} style={[s.filterBtn, filter === f && s.filterBtnActive]} onPress={() => setFilter(f)}>
               <Text style={[s.filterText, filter === f && s.filterTextActive]}>
                 {label} ({cars.filter(c => f === 'all' || (f === 'available' ? c.isAvailable : !c.isAvailable)).length})
@@ -245,7 +245,7 @@ export default function CarsScreen() {
             <TouchableOpacity onPress={() => setShowModal(false)}>
               <Text style={s.modalCancelButton}>Ακύρωση</Text>
             </TouchableOpacity>
-            <Text style={s.modalTitle}>{editingCar ? 'Επεξεργασία' : 'Νέο Αυτοκίνητο'}</Text>
+            <Text style={s.modalTitle}>{editingCar ? 'Επεξεργασία' : 'Νέο Οχημα'}</Text>
             <TouchableOpacity onPress={saveCar}>
               <Text style={s.modalSaveButton}>Αποθήκευση</Text>
             </TouchableOpacity>

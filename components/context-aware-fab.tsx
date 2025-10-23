@@ -180,7 +180,7 @@ export function ContextAwareFab({
         return [
           {
             id: 'new-car',
-            label: 'Νέο Αυτοκίνητο',
+            label: 'Νέο Οχημα',
             icon: '🚗',
             onPress: () => {
               closeMenu();

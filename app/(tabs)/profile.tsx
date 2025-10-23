@@ -10,14 +10,17 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SimpleGlassCard } from '../../components/glass-card';
+import { Breadcrumb } from '../../components/breadcrumb';
 import { AuthService } from '../../services/auth.service';
 import { supabase } from '../../utils/supabase';
 import { Colors, Typography, Spacing, Shadows, BorderRadius, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
+import { useNotifications } from '../../hooks/useNotifications';
 
 interface UserProfile {
   id: string;
@@ -27,6 +30,8 @@ interface UserProfile {
   address?: string;
   // AADE Fields
   aadeEnabled?: boolean;
+  aadeUserId?: string;
+  aadeSubscriptionKey?: string;
   companyVatNumber?: string;
   companyName?: string;
   companyAddress?: string;
@@ -43,11 +48,20 @@ interface EditField {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { sendTestNotification } = useNotifications();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState<EditField | null>(null);
   const [editValue, setEditValue] = useState('');
+  
+  // Settings state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [showKeys, setShowKeys] = useState({
+    userId: false,
+    subscriptionKey: false,
+  });
 
   useEffect(() => {
     loadProfile();
@@ -68,6 +82,8 @@ export default function ProfileScreen() {
             phone: profileData.phone || '',
             address: profileData.address || '',
             aadeEnabled: profileData.aade_enabled || false,
+            aadeUserId: profileData.aade_user_id || '',
+            aadeSubscriptionKey: profileData.aade_subscription_key || '',
             companyVatNumber: profileData.company_vat_number || '',
             companyName: profileData.company_name || '',
             companyAddress: profileData.company_address || '',
@@ -100,6 +116,8 @@ export default function ProfileScreen() {
       else if (key === 'companyVatNumber') updateData.company_vat_number = editValue;
       else if (key === 'companyAddress') updateData.company_address = editValue;
       else if (key === 'companyActivity') updateData.company_activity = editValue;
+      else if (key === 'aadeUserId') updateData.aade_user_id = editValue;
+      else if (key === 'aadeSubscriptionKey') updateData.aade_subscription_key = editValue;
 
       const { error } = await supabase
         .from('users')
@@ -107,16 +125,7 @@ export default function ProfileScreen() {
         .eq('id', profile.id);
 
       if (error) {
-        // If column doesn't exist, show friendly message
-        if (error.message?.includes('column') || error.message?.includes('does not exist')) {
-          Alert.alert(
-            'Ενημέρωση Βάσης Δεδομένων',
-            'Παρακαλώ εκτελέστε το migration "add-missing-profile-columns.sql" στο Supabase για να προσθέσετε αυτό το πεδίο.',
-          );
-        } else {
-          throw error;
-        }
-        return;
+        throw error;
       }
 
       // Update local state
@@ -133,6 +142,25 @@ export default function ProfileScreen() {
       Alert.alert('Σφάλμα', 'Αποτυχία αποθήκευσης. Παρακαλώ προσπαθήστε ξανά.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleAADE(value: boolean) {
+    if (!profile) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ aade_enabled: value })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      setProfile({ ...profile, aadeEnabled: value });
+      Alert.alert('Επιτυχία', value ? 'Το ΑΑΔΕ ενεργοποιήθηκε' : 'Το ΑΑΔΕ απενεργοποιήθηκε');
+    } catch (error) {
+      console.error('Error toggling AADE:', error);
+      Alert.alert('Σφάλμα', 'Αποτυχία ενημέρωσης');
     }
   }
 
@@ -221,7 +249,7 @@ export default function ProfileScreen() {
       },
       {
         icon: 'car-sport-outline',
-        label: 'Αυτοκίνητα',
+        label: 'Στόλος',
         color: Colors.info,
         route: '/cars',
       },
@@ -289,14 +317,12 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       {/* Breadcrumb */}
-      <View style={styles.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={styles.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={styles.breadcrumbCurrent}>Προφίλ</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Προφίλ & Ρυθμίσεις' },
+        ]}
+      />
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -363,79 +389,173 @@ export default function ProfileScreen() {
             ]
           )}
 
-          {/* Company Information (AADE) */}
-          {profile.aadeEnabled && (
-            <>
-              {renderProfileCard(
-                'Στοιχεία Επιχείρησης',
-                'business-outline',
-                Colors.info,
-                [
-                  {
-                    key: 'companyName',
-                    value: profile.companyName || '',
-                    label: 'Επωνυμία Εταιρείας',
-                    icon: 'business',
-                    placeholder: 'Εισάγετε την επωνυμία',
-                  },
-                  {
-                    key: 'companyVatNumber',
-                    value: profile.companyVatNumber || '',
-                    label: 'ΑΦΜ',
-                    icon: 'card',
-                    placeholder: 'Εισάγετε το ΑΦΜ',
-                  },
-                  {
-                    key: 'companyAddress',
-                    value: profile.companyAddress || '',
-                    label: 'Διεύθυνση Έδρας',
-                    icon: 'location',
-                    placeholder: 'Εισάγετε τη διεύθυνση',
-                  },
-                  {
-                    key: 'companyActivity',
-                    value: profile.companyActivity || '',
-                    label: 'Δραστηριότητα',
-                    icon: 'briefcase',
-                    placeholder: 'Εισάγετε τη δραστηριότητα',
-                  },
-                ]
-              )}
-            </>
-          )}
-
-          {/* Settings & Actions */}
+          {/* AADE Digital Client Registry */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitleSimple}>Ρυθμίσεις & Ενέργειες</Text>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIcon, { backgroundColor: Colors.info + '15' }]}>
+                <Ionicons name="shield-checkmark-outline" size={24} color={Colors.info} />
+              </View>
+              <Text style={styles.sectionTitle}>Ψηφιακό Πελατολόγιο (ΑΑΔΕ)</Text>
+            </View>
+
+            {/* AADE Toggle */}
+            <View style={styles.card}>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleInfo}>
+                  <Text style={styles.toggleTitle}>Ενεργοποίηση ΑΑΔΕ</Text>
+                  <Text style={styles.toggleSubtitle}>
+                    Αυτόματη υποβολή στο Digital Client Registry
+                  </Text>
+                </View>
+                <Switch
+                  value={profile.aadeEnabled}
+                  onValueChange={toggleAADE}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={profile.aadeEnabled ? '#FFFFFF' : Colors.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* AADE Settings (shown when enabled) */}
+            {profile.aadeEnabled && (
+              <>
+                {renderProfileCard(
+                  'Διαπιστευτήρια ΑΑΔΕ',
+                  'key-outline',
+                  Colors.info,
+                  [
+                    {
+                      key: 'aadeUserId',
+                      value: profile.aadeUserId || '',
+                      label: 'AADE User ID',
+                      icon: 'person-circle',
+                      placeholder: 'Εισάγετε το AADE User ID',
+                    },
+                    {
+                      key: 'aadeSubscriptionKey',
+                      value: profile.aadeSubscriptionKey || '',
+                      label: 'Subscription Key',
+                      icon: 'key',
+                      placeholder: 'Εισάγετε το Subscription Key',
+                    },
+                  ]
+                )}
+
+                {renderProfileCard(
+                  'Στοιχεία Επιχείρησης',
+                  'business-outline',
+                  Colors.info,
+                  [
+                    {
+                      key: 'companyVatNumber',
+                      value: profile.companyVatNumber || '',
+                      label: 'ΑΦΜ (9 ψηφία)',
+                      icon: 'card',
+                      placeholder: '123456789',
+                    },
+                    {
+                      key: 'companyName',
+                      value: profile.companyName || '',
+                      label: 'Επωνυμία Εταιρείας',
+                      icon: 'business',
+                      placeholder: 'π.χ. AGGELOS RENTALS ΙΚΕ',
+                    },
+                    {
+                      key: 'companyAddress',
+                      value: profile.companyAddress || '',
+                      label: 'Διεύθυνση Έδρας',
+                      icon: 'location',
+                      placeholder: 'Λεωφ. Συγγρού 123, Αθήνα',
+                    },
+                    {
+                      key: 'companyActivity',
+                      value: profile.companyActivity || '',
+                      label: 'Δραστηριότητα',
+                      icon: 'briefcase',
+                      placeholder: 'Ενοικίαση Αυτοκινήτων',
+                    },
+                  ]
+                )}
+
+                {/* AADE Help */}
+                <View style={styles.helpCard}>
+                  <Text style={styles.helpTitle}>ℹ️ Πού να βρω αυτά τα στοιχεία;</Text>
+                  <Text style={styles.helpText}>
+                    • Εγγραφείτε στο AADE Developer Portal{'\n'}
+                    • Συνδεθείτε στο Digital Client Registry API Portal{'\n'}
+                    • Θα βρείτε το User ID και το Subscription Key{'\n'}
+                    • Production: https://mydatapi.aade.gr/DCL/{'\n'}
+                    • Development: https://mydataapidev.aade.gr/DCL/
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* App Settings */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIcon, { backgroundColor: Colors.secondary + '15' }]}>
+                <Ionicons name="settings-outline" size={24} color={Colors.secondary} />
+              </View>
+              <Text style={styles.sectionTitle}>Ρυθμίσεις Εφαρμογής</Text>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleInfo}>
+                  <Text style={styles.toggleTitle}>Ειδοποιήσεις Push</Text>
+                  <Text style={styles.toggleSubtitle}>Λήψη ειδοποιήσεων για νέες ενοικιάσεις</Text>
+                </View>
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={setNotificationsEnabled}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={notificationsEnabled ? '#FFFFFF' : Colors.textSecondary}
+                />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleInfo}>
+                  <Text style={styles.toggleTitle}>Biometric Login</Text>
+                  <Text style={styles.toggleSubtitle}>Χρήση δακτυλικού αποτυπώματος/Face ID</Text>
+                </View>
+                <Switch
+                  value={biometricsEnabled}
+                  onValueChange={setBiometricsEnabled}
+                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  thumbColor={biometricsEnabled ? '#FFFFFF' : Colors.textSecondary}
+                />
+              </View>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.fieldRow}
+                onPress={async () => {
+                  try {
+                    await sendTestNotification();
+                    Alert.alert('Επιτυχία', 'Η δοκιμαστική ειδοποίηση στάλθηκε!');
+                  } catch (error) {
+                    Alert.alert('Σφάλμα', 'Αποτυχία αποστολής ειδοποίησης');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.fieldLeft}>
+                  <Ionicons name="flask" size={20} color={Colors.textSecondary} />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Δοκιμή Ειδοποίησης</Text>
+                    <Text style={styles.fieldValue}>Αποστολή test push notification</Text>
+                  </View>
+                </View>
+                <Ionicons name="send-outline" size={20} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Quick Links */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitleSimple}>Εργαλεία & Δοκιμές</Text>
             
-            <TouchableOpacity
-              style={styles.settingButton}
-              onPress={() => router.push('/settings')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingButtonLeft}>
-                <View style={[styles.settingButtonIcon, { backgroundColor: Colors.secondary + '15' }]}>
-                  <Ionicons name="settings-outline" size={22} color={Colors.secondary} />
-                </View>
-                <Text style={styles.settingButtonText}>Ρυθμίσεις Εφαρμογής</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.settingButton}
-              onPress={() => router.push('/aade-settings')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingButtonLeft}>
-                <View style={[styles.settingButtonIcon, { backgroundColor: Colors.info + '15' }]}>
-                  <Ionicons name="shield-checkmark-outline" size={22} color={Colors.info} />
-                </View>
-                <Text style={styles.settingButtonText}>Ψηφιακό Πελατολόγιο (ΑΑΔΕ)</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.settingButton}
               onPress={() => router.push('/pdf-template-test?contractId=86951486-8c18-4e1f-88e8-9baa9a25af34')}
@@ -446,6 +566,34 @@ export default function ProfileScreen() {
                   <Ionicons name="document-text-outline" size={22} color="#8e44ad" />
                 </View>
                 <Text style={styles.settingButtonText}>🎨 Δοκιμή Προτύπων PDF</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingButton}
+              onPress={() => router.push('/contract-photo-upload-test')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingButtonLeft}>
+                <View style={[styles.settingButtonIcon, { backgroundColor: Colors.info + '15' }]}>
+                  <Ionicons name="camera-outline" size={22} color={Colors.info} />
+                </View>
+                <Text style={styles.settingButtonText}>📸 Photo Upload Test</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingButton}
+              onPress={() => router.push('/auth/reset-password')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingButtonLeft}>
+                <View style={[styles.settingButtonIcon, { backgroundColor: Colors.warning + '15' }]}>
+                  <Ionicons name="key-outline" size={22} color={Colors.warning} />
+                </View>
+                <Text style={styles.settingButtonText}>Αλλαγή Κωδικού</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
@@ -468,7 +616,7 @@ export default function ProfileScreen() {
           {/* App Info */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>AGGELOS Rentals v1.0.0</Text>
-            <Text style={styles.footerSubtext}>© 2024 Όλα τα δικαιώματα διατηρούνται</Text>
+            <Text style={styles.footerSubtext}>© 2024 Ολα τα δικαιώματα διατηρούνται</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -495,6 +643,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={Colors.textSecondary}
                 autoFocus
                 editable={!saving}
+                secureTextEntry={editingField.key.includes('Key') || editingField.key.includes('UserId')}
               />
             </View>
 
@@ -534,31 +683,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  breadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 6,
-  },
-  breadcrumbItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  breadcrumbCurrent: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
   },
   keyboardView: {
     flex: 1,
@@ -771,6 +895,48 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderLight,
     marginLeft: Spacing.lg + 20 + Spacing.md,
   },
+  // Toggle Row
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  toggleTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  toggleSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  // Help Card
+  helpCard: {
+    backgroundColor: Colors.info + '08',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.info,
+    padding: Spacing.lg,
+    marginHorizontal: Spacing.md,
+    borderRadius: 12,
+    marginTop: Spacing.md,
+  },
+  helpTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  helpText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
   // Settings Buttons
   settingButton: {
     flexDirection: 'row',
@@ -803,8 +969,6 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     backgroundColor: Colors.error + '08',
-    borderWidth: 1,
-    borderColor: Colors.error + '20',
   },
   // Footer
   footer: {
@@ -865,8 +1029,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: Spacing.md,
     gap: Spacing.sm,
-    borderWidth: 2,
-    borderColor: Colors.borderLight,
     marginBottom: Spacing.lg,
   },
   editInput: {
@@ -887,8 +1049,6 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.border,
   },
   editCancelText: {
     fontSize: 15,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumb } from '../../components/breadcrumb';
 import { SimpleGlassCard } from '../../components/glass-card';
 import { SupabaseContractService } from '../../services/supabase-contract.service';
 import { Colors, Typography, Glass } from '../../utils/design-system';
@@ -69,14 +70,12 @@ export default function AnalyticsScreen() {
   return (
     <View style={s.container}>
 
-      <View style={s.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={s.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={s.breadcrumbCurrent}>Αναλυτικά</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Αναλυτικά' },
+        ]}
+      />
 
       <ScrollView style={s.content} {...smoothScrollConfig} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <Text style={s.sectionTitle}>Επισκόπηση</Text>
@@ -87,12 +86,12 @@ export default function AnalyticsScreen() {
           <StatCard icon="checkmark-done" label="Ολοκληρωμένα" value={stats.completed} color={Colors.textSecondary} />
         </View>
 
-        <Text style={s.sectionTitle}>Έσοδα</Text>
+        <Text style={s.sectionTitle}>Εσοδα</Text>
         <View style={s.revenueCard}>
           <View style={s.revenueRow}>
             <Ionicons name="trending-up" size={24} color={Colors.success} />
             <View>
-              <Text style={s.revenueLabel}>Συνολικά Έσοδα</Text>
+              <Text style={s.revenueLabel}>Συνολικά Εσοδα</Text>
               <Text style={s.revenueValue}>€{stats.revenue.toLocaleString()}</Text>
             </View>
           </View>
@@ -124,10 +123,6 @@ export default function AnalyticsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   content: { flex: 1, padding: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginVertical: 8, marginLeft: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },

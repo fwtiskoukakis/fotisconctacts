@@ -322,7 +322,7 @@ export default function EditContractScreen() {
       // Show success notification
       Alert.alert(
         '✅ Επιτυχία!',
-        'Το συμβόλαιο ενημερώθηκε επιτυχώς!\n\nΌλες οι αλλαγές σας έχουν αποθηκευτεί στη βάση δεδομένων.',
+        'Το συμβόλαιο ενημερώθηκε επιτυχώς!\n\nΟλες οι αλλαγές σας έχουν αποθηκευτεί στη βάση δεδομένων.',
         [
           {
             text: 'Προβολή',
@@ -501,7 +501,7 @@ export default function EditContractScreen() {
               )}
             </View>
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>Παραλαβή Ώρα *</Text>
+              <Text style={styles.label}>Παραλαβή Ωρα *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="π.χ. 10:00"
@@ -564,7 +564,7 @@ export default function EditContractScreen() {
               )}
             </View>
             <View style={styles.halfWidth}>
-              <Text style={styles.label}>Επιστροφή Ώρα *</Text>
+              <Text style={styles.label}>Επιστροφή Ωρα *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="π.χ. 18:00"
@@ -592,7 +592,7 @@ export default function EditContractScreen() {
 
         {/* 3. Car Info & Condition - Compact */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Όχημα & Κατάσταση</Text>
+          <Text style={styles.sectionTitle}>3. Οχημα & Κατάσταση</Text>
           
           <View style={styles.row}>
             <TextInput
@@ -821,19 +821,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     color: '#333',
   },
   datePickerButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#f5f5f5',
     alignItems: 'flex-start',
   },
   datePickerButtonText: {
@@ -887,15 +884,12 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   fuelButtonActive: {
     backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   fuelText: {
     fontSize: 10,
@@ -1019,8 +1013,6 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
   viewPhotoButton: {
     position: 'absolute',
@@ -1072,8 +1064,6 @@ const styles = StyleSheet.create({
   },
   uploadSuccessContainer: {
     backgroundColor: '#d4edda',
-    borderColor: '#c3e6cb',
-    borderWidth: 1,
     borderRadius: 8,
     padding: 10,
     marginTop: 10,

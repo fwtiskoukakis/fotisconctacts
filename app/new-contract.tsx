@@ -169,7 +169,7 @@ export default function NewContractScreen() {
         
         // Show alert with car info
         Alert.alert(
-          'Όχημα Βρέθηκε',
+          'Οχημα Βρέθηκε',
           `${makeModel} (${car.year})`,
           [{ text: 'OK' }]
         );
@@ -528,31 +528,6 @@ export default function NewContractScreen() {
           <Text style={styles.header}>Νέο Συμβόλαιο Ενοικίασης</Text>
         </View>
 
-        {/* Template Selection */}
-        <View style={styles.section}>
-          <View style={styles.templateHeader}>
-            <Text style={styles.sectionTitle}>📋 Πρότυπο Συμβολαίου</Text>
-            <TouchableOpacity
-              style={styles.templateButton}
-              onPress={() => setShowTemplateSelector(true)}
-            >
-              <Text style={styles.templateButtonText}>
-                {selectedTemplate ? 'Αλλαγή Προτύπου' : 'Επιλογή Προτύπου'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {selectedTemplate && (
-            <View style={styles.selectedTemplate}>
-              <Text style={styles.selectedTemplateName}>{selectedTemplate.name}</Text>
-              <Text style={styles.selectedTemplateDescription}>{selectedTemplate.description}</Text>
-              <View style={styles.templateDetails}>
-                <Text style={styles.templateDetail}>Κατηγορία: {selectedTemplate.category}</Text>
-                <Text style={styles.templateDetail}>Κόστος: €{selectedTemplate.templateData.baseDailyRate}/ημέρα</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
         {/* 1. Essential Renter Info - Compact */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>1. Στοιχεία Ενοικιαστή</Text>
@@ -684,7 +659,7 @@ export default function NewContractScreen() {
 
         {/* 3. Car Info & Condition - Compact */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Όχημα & Κατάσταση</Text>
+          <Text style={styles.sectionTitle}>3. Οχημα & Κατάσταση</Text>
           
           <View style={styles.row}>
             <TextInput
@@ -880,14 +855,6 @@ export default function NewContractScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Template Selector Modal */}
-      <ContractTemplateSelector
-        visible={showTemplateSelector}
-        onClose={() => setShowTemplateSelector(false)}
-        onSelectTemplate={handleSelectTemplate}
-        onCreateCustom={handleCreateCustom}
-      />
     </SafeAreaView>
   );
 }
@@ -915,60 +882,15 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   userButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f5f5f5',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
   userButtonText: {
     fontSize: 12,
     color: '#333',
     fontWeight: '500',
-  },
-  templateHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  templateButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  templateButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  selectedTemplate: {
-    backgroundColor: '#e8f4fd',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  selectedTemplateName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 4,
-  },
-  selectedTemplateDescription: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  templateDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  templateDetail: {
-    fontSize: 11,
-    color: '#666',
   },
   header: {
     fontSize: 20,
@@ -1009,14 +931,12 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 6,
     padding: 10,
     marginBottom: 8,
     fontSize: 14,
     color: '#333',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
   },
   label: {
     fontSize: 12,
@@ -1025,11 +945,9 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   dateButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 6,
     padding: 10,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
   },
   dateText: {
@@ -1037,14 +955,12 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   timeInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 6,
     padding: 8,
     marginTop: 5,
     fontSize: 14,
     color: '#333',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     textAlign: 'center',
   },
   switchRow: {
@@ -1093,15 +1009,12 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   fuelButtonActive: {
     backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   fuelText: {
     fontSize: 10,
@@ -1122,15 +1035,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     marginHorizontal: 2,
   },
   insuranceButtonActive: {
     backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   insuranceText: {
     fontSize: 14,
@@ -1168,11 +1078,8 @@ const styles = StyleSheet.create({
   },
   signatureBox: {
     height: 120,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderStyle: 'dashed',
     borderRadius: 8,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -1303,8 +1210,6 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
   removePhotoButton: {
     position: 'absolute',
@@ -1328,8 +1233,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   photoPreviewUploaded: {
-    borderColor: '#28a745',
-    borderWidth: 2,
+    opacity: 1,
   },
   uploadedIndicator: {
     position: 'absolute',
@@ -1341,8 +1245,6 @@ const styles = StyleSheet.create({
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   uploadedIndicatorText: {
     color: '#fff',
@@ -1367,8 +1269,6 @@ const styles = StyleSheet.create({
   },
   uploadSuccessContainer: {
     backgroundColor: '#d4edda',
-    borderColor: '#c3e6cb',
-    borderWidth: 1,
     borderRadius: 8,
     padding: 10,
     marginTop: 10,

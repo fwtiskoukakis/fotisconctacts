@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Breadcrumb } from '../../components/breadcrumb';
 import { SimpleGlassCard } from '../../components/glass-card';
 import { SupabaseContractService } from '../../services/supabase-contract.service';
 import { Contract } from '../../models/contract.interface';
@@ -149,14 +150,12 @@ export default function ContractsScreen() {
   return (
     <View style={styles.container}>
       {/* Breadcrumb */}
-      <View style={styles.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={styles.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={styles.breadcrumbCurrent}>Συμβόλαια</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Συμβόλαια' },
+        ]}
+      />
 
       {/* Search & Filters */}
       <View style={styles.topBar}>
@@ -177,7 +176,7 @@ export default function ContractsScreen() {
               onPress={() => setFilter(f)}
             >
               <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                {f === 'all' ? 'Όλα' : getStatusLabel(f)} ({contracts.filter(c => f === 'all' || c.status === f).length})
+                {f === 'all' ? 'Ολα' : getStatusLabel(f)} ({contracts.filter(c => f === 'all' || c.status === f).length})
               </Text>
             </TouchableOpacity>
           ))}
@@ -253,19 +252,6 @@ export default function ContractsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  breadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 6,
-  },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   topBar: {
     backgroundColor: '#fff',
     padding: 8,

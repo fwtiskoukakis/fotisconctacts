@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/app-header';
 import { BottomTabBar } from '../components/bottom-tab-bar';
 import { SimpleGlassCard } from '../components/glass-card';
+import { Breadcrumb } from '../components/breadcrumb';
 import { PDFContractGenerator } from '../components/pdf-contract-generator';
 import { ImageModal } from '../components/image-modal';
 import { ContractPhotoButton } from '../components/contract-photo-button';
@@ -186,7 +187,7 @@ export default function ContractDetailsScreen() {
           onPress: async () => {
             setSubmittingAADE(true);
             try {
-              const result = await createContractWithAADE(contract, contract.id);
+              const result = await createContractWithAADE(contract, contract.id, contract.userId);
               
               if (result.success) {
                 Alert.alert(
@@ -234,18 +235,13 @@ export default function ContractDetailsScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <AppHeader title="Λεπτομέρειες Συμβολαίου" showBack={true} showActions={true} />
 
-      <View style={s.breadcrumb}>
-        <TouchableOpacity onPress={() => router.push('/')} style={s.breadcrumbItem}>
-          <Ionicons name="home" size={14} color={Colors.primary} />
-          <Text style={s.breadcrumbText}>Αρχική</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <TouchableOpacity onPress={() => router.push('/contracts')} style={s.breadcrumbItem}>
-          <Text style={s.breadcrumbText}>Συμβόλαια</Text>
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textSecondary} />
-        <Text style={s.breadcrumbCurrent}>#{contract.id.slice(0, 8)}</Text>
-      </View>
+      <Breadcrumb 
+        items={[
+          { label: 'Αρχική', path: '/', icon: 'home' },
+          { label: 'Συμβόλαια', path: '/contracts' },
+          { label: `#${contract.id.slice(0, 8)}` },
+        ]}
+      />
 
       <ScrollView style={s.content} contentContainerStyle={s.scrollContent} {...smoothScrollConfig}>
         {/* AADE Status Badge */}
@@ -270,19 +266,19 @@ export default function ContractDetailsScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Ενοικιαστής</Text>
           <View style={s.card}>
-            <InfoRow icon="person" label="Όνομα" value={contract.renterInfo?.fullName || 'N/A'} />
+            <InfoRow icon="person" label="Ονομα" value={contract.renterInfo?.fullName || 'N/A'} />
             <InfoRow icon="mail" label="Email" value={contract.renterInfo?.email || 'N/A'} />
             <InfoRow icon="call" label="Τηλέφωνο" value={contract.renterInfo?.phoneNumber || 'N/A'} />
-            {contract.renterInfo?.licenseNumber && (
-              <InfoRow icon="card" label="Άδεια" value={contract.renterInfo.licenseNumber} />
+            {contract.renterInfo?.driverLicenseNumber && (
+              <InfoRow icon="card" label="Αδεια" value={contract.renterInfo.driverLicenseNumber} />
             )}
           </View>
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Αυτοκίνητο</Text>
+          <Text style={s.sectionTitle}>Οχημα</Text>
           <View style={s.card}>
-            <InfoRow icon="car" label="Όχημα" value={contract.carInfo?.makeModel || 'N/A'} />
+            <InfoRow icon="car" label="Οχημα" value={contract.carInfo?.makeModel || 'N/A'} />
             <InfoRow icon="pricetag" label="Πινακίδα" value={contract.carInfo?.licensePlate || 'N/A'} />
             <InfoRow icon="speedometer" label="Χιλιόμετρα" value={`${contract.carCondition?.mileage || contract.carInfo?.mileage || 0} km`} />
             <InfoRow icon="water" label="Καύσιμο" value={`${contract.carCondition?.fuelLevel || 0}/8`} />
@@ -290,7 +286,7 @@ export default function ContractDetailsScreen() {
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Περίοδος & Κόστος</Text>
+          <Text style={s.sectionTitle}>Περιοδος & Κοστος</Text>
           <View style={s.card}>
             <InfoRow icon="calendar" label="Παραλαβή" value={contract.rentalPeriod?.pickupDate ? new Date(contract.rentalPeriod.pickupDate).toLocaleDateString('el-GR') : 'N/A'} />
             <InfoRow icon="calendar" label="Επιστροφή" value={contract.rentalPeriod?.dropoffDate ? new Date(contract.rentalPeriod.dropoffDate).toLocaleDateString('el-GR') : 'N/A'} />
@@ -307,7 +303,7 @@ export default function ContractDetailsScreen() {
 
         {contract.damagePoints && contract.damagePoints.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Ζημιές ({contract.damagePoints.length})</Text>
+            <Text style={s.sectionTitle}>Ζημιες ({contract.damagePoints.length})</Text>
             <View style={s.card}>
               {contract.damagePoints.map((d, idx) => {
                 const markerTypeLabels: Record<string, string> = {
@@ -404,10 +400,6 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 14, color: Colors.textSecondary },
-  breadcrumb: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 },
-  breadcrumbItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  breadcrumbText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  breadcrumbCurrent: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
   content: { flex: 1, padding: 8 },
   scrollContent: { paddingBottom: 120 },
   aadeStatusContainer: { marginBottom: 12, padding: 12, backgroundColor: '#fff', borderRadius: 12, ...Shadows.sm },
