@@ -437,6 +437,20 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.settingButton}
+              onPress={() => router.push('/pdf-template-test?contractId=86951486-8c18-4e1f-88e8-9baa9a25af34')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingButtonLeft}>
+                <View style={[styles.settingButtonIcon, { backgroundColor: '#8e44ad15' }]}>
+                  <Ionicons name="document-text-outline" size={22} color="#8e44ad" />
+                </View>
+                <Text style={styles.settingButtonText}>🎨 Δοκιμή Προτύπων PDF</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.settingButton, styles.signOutButton]}
               onPress={handleSignOut}
               activeOpacity={0.7}

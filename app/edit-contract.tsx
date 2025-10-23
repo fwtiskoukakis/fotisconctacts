@@ -22,6 +22,7 @@ import { ImageModal } from '../components/image-modal';
 import { ContractPhotoUploader } from '../components/contract-photo-uploader';
 import * as ImagePicker from 'expo-image-picker';
 import { format } from 'date-fns';
+import { AuthService } from '../services/auth.service';
 
 type CarView = 'front' | 'rear' | 'left' | 'right';
 
@@ -34,6 +35,7 @@ export default function EditContractScreen() {
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // State for date picker visibility
   const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
@@ -50,7 +52,19 @@ export default function EditContractScreen() {
 
   useEffect(() => {
     loadContract();
+    loadCurrentUser();
   }, [params.contractId]);
+
+  async function loadCurrentUser() {
+    try {
+      const user = await AuthService.getCurrentUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  }
 
   async function loadContract() {
     try {
