@@ -16,6 +16,7 @@ import { supabase } from '../utils/supabase';
 import { Colors, Typography, Shadows, Glass } from '../utils/design-system';
 import { smoothScrollConfig } from '../utils/animations';
 import { createContractWithAADE, canSubmitToAADE, getAADEStatusMessage } from '../utils/aade-contract-helper';
+import { AuthService } from '../services/auth.service';
 
 export default function ContractDetailsScreen() {
   const router = useRouter();
@@ -26,11 +27,24 @@ export default function ContractDetailsScreen() {
   const [selectedImageUri, setSelectedImageUri] = React.useState<string | null>(null);
   const [isImageModalVisible, setIsImageModalVisible] = React.useState(false);
   const [contractPhotos, setContractPhotos] = React.useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     loadContract();
     loadContractPhotos();
+    loadCurrentUser();
   }, [contractId]);
+
+  async function loadCurrentUser() {
+    try {
+      const user = await AuthService.getCurrentUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  }
 
   async function loadContract() {
     if (typeof contractId === 'string') {
@@ -102,9 +116,34 @@ export default function ContractDetailsScreen() {
               Alert.alert('Επιτυχία', 'Το συμβόλαιο διαγράφηκε επιτυχώς.', [
                 { text: 'OK', onPress: () => router.push('/(tabs)/') }
               ]);
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error deleting contract:', error);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής συμβολαίου.');
+              
+              // Check if this is a permission/authorization error
+              const errorMessage = error?.message?.toLowerCase() || '';
+              const errorCode = error?.code || '';
+              
+              // RLS policy violation or permission denied
+              if (
+                errorMessage.includes('policy') || 
+                errorMessage.includes('permission') ||
+                errorMessage.includes('denied') ||
+                errorCode === 'PGRST301' ||
+                errorCode === '42501'
+              ) {
+                Alert.alert(
+                  'Δεν Επιτρέπεται',
+                  'Δεν έχετε δικαίωμα να διαγράψετε αυτό το συμβόλαιο. Μπορείτε να διαγράψετε μόνο τα δικά σας συμβόλαια.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                // Generic error
+                Alert.alert(
+                  'Σφάλμα', 
+                  'Αποτυχία διαγραφής συμβολαίου. Παρακαλώ δοκιμάστε ξανά.',
+                  [{ text: 'OK' }]
+                );
+              }
             }
           }
         }
@@ -303,10 +342,18 @@ export default function ContractDetailsScreen() {
             <Ionicons name="create" size={18} color="#fff" />
             <Text style={s.btnText}>Επεξεργασία</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.btn, s.btnDelete]} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={18} color="#fff" />
-            <Text style={s.btnText}>Διαγραφή</Text>
-          </TouchableOpacity>
+          {/* Only show delete button if user owns this contract */}
+          {currentUserId === contract.userId ? (
+            <TouchableOpacity style={[s.btn, s.btnDelete]} onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={18} color="#fff" />
+              <Text style={s.btnText}>Διαγραφή</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[s.btn, s.btnDisabled]}>
+              <Ionicons name="lock-closed" size={18} color="#999" />
+              <Text style={[s.btnText, s.btnTextDisabled]}>Μη Διαθέσιμο</Text>
+            </View>
+          )}
         </View>
 
         {/* Professional PDF Generator */}
@@ -379,7 +426,9 @@ const s = StyleSheet.create({
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, padding: 12, borderRadius: 12 },
   btnSecondary: { backgroundColor: Colors.success },
   btnDelete: { backgroundColor: Colors.error },
+  btnDisabled: { backgroundColor: '#e0e0e0' },
   btnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  btnTextDisabled: { color: '#999' },
   aadeButton: {
     flexDirection: 'row',
     alignItems: 'center',
