@@ -37,7 +37,7 @@ const tabs: TabItem[] = [
     key: 'damage',
     label: 'Ζημιές',
     icon: 'warning',
-    route: '/damage-report',
+    route: '/damages',
   },
   {
     key: 'cars',

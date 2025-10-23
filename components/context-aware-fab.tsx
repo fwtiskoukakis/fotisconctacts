@@ -54,6 +54,7 @@ export function ContextAwareFab({
   const [isExpanded, setIsExpanded] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0));
+  const [rotateAnim] = useState(new Animated.Value(0));
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Continuous pulse animation for the icon
@@ -286,6 +287,13 @@ export function ContextAwareFab({
 
   function toggleExpanded() {
     const newExpanded = !isExpanded;
+    console.log('🔄 FAB toggleExpanded:', { isExpanded, newExpanded });
+    
+    // Stop any running animations first
+    fadeAnim.stopAnimation();
+    scaleAnim.stopAnimation();
+    rotateAnim.stopAnimation();
+    
     setIsExpanded(newExpanded);
 
     Animated.parallel([
@@ -301,12 +309,30 @@ export function ContextAwareFab({
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-    ]).start();
+      Animated.timing(rotateAnim, {
+        toValue: newExpanded ? 1 : 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      console.log('🔄 FAB animation completed, rotateAnim value:', rotateAnim._value);
+    });
   }
 
   function closeMenu() {
-    if (!isExpanded) return;
+    console.log('🔄 FAB closeMenu called, isExpanded:', isExpanded);
     
+    // Stop any running animations first
+    fadeAnim.stopAnimation();
+    scaleAnim.stopAnimation();
+    rotateAnim.stopAnimation();
+    
+    // Reset rotation to 0 immediately
+    rotateAnim.setValue(0);
+    console.log('🔄 FAB rotateAnim reset to 0, current value:', rotateAnim._value);
+    
+    // Always run the close animation, regardless of state
     setIsExpanded(false);
     
     Animated.parallel([
@@ -322,7 +348,10 @@ export function ContextAwareFab({
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-    ]).start();
+      // Don't animate rotation since we set it directly
+    ]).start(() => {
+      console.log('🔄 FAB closeMenu animation completed, rotateAnim value:', rotateAnim._value);
+    });
   }
 
   const actions = getActionsForCurrentPage();
@@ -391,9 +420,9 @@ export function ContextAwareFab({
             transform: [
               { scale: pulseAnim },
               {
-                rotate: scaleAnim.interpolate({
+                rotate: rotateAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['0deg', '180deg'], // Rotates 180 degrees when expanded
+                  outputRange: ['0deg', '180deg'],
                 }),
               },
             ],

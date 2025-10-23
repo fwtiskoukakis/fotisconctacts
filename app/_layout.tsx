@@ -7,6 +7,7 @@ import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 import { ThemeProvider } from '../contexts/theme-context';
 import { useNotifications } from '../hooks/useNotifications';
+import { LoadingScreen } from '../components/loading-screen';
 
 /**
  * Root layout component with authentication protection
@@ -14,6 +15,7 @@ import { useNotifications } from '../hooks/useNotifications';
 export default function RootLayout() {
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const segments = useSegments();
   
@@ -50,6 +52,10 @@ export default function RootLayout() {
     setIsAuthenticated(!!user);
     setIsAuthInitialized(true);
   }
+
+  const handleLoadingComplete = () => {
+    setIsLoading(false);
+  };
 
   async function initializeNotifications() {
     try {
@@ -89,23 +95,27 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-          <Stack.Screen name="auth/sign-in" />
-          <Stack.Screen name="auth/sign-up" />
-          <Stack.Screen name="auth/reset-password" />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="new-contract" />
-          <Stack.Screen name="contract-details" />
-          <Stack.Screen name="edit-contract" />
-          <Stack.Screen name="car-details" />
-          <Stack.Screen name="user-management" />
-          <Stack.Screen name="aade-settings" />
-          <Stack.Screen name="dark-mode-test" />
-          </Stack>
+          {isLoading ? (
+            <LoadingScreen onLoadingComplete={handleLoadingComplete} />
+          ) : (
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="auth/sign-in" />
+              <Stack.Screen name="auth/sign-up" />
+              <Stack.Screen name="auth/reset-password" />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="new-contract" />
+              <Stack.Screen name="contract-details" />
+              <Stack.Screen name="edit-contract" />
+              <Stack.Screen name="car-details" />
+              <Stack.Screen name="user-management" />
+              <Stack.Screen name="aade-settings" />
+              <Stack.Screen name="dark-mode-test" />
+            </Stack>
+          )}
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

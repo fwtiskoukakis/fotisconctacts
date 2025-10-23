@@ -49,9 +49,6 @@ export const FleetOSLogo: React.FC<FleetOSLogoProps> = ({
         </Filter>
       </Defs>
       
-      {isIcon && (
-        <Rect fill="url(#iconBg)" width="48" height="48" rx="12" />
-      )}
       
       <G filter="url(#glow)">
         {/* Main circular arrow path */}
