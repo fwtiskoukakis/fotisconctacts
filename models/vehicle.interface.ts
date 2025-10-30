@@ -52,6 +52,15 @@ export interface Vehicle {
   tiresFrontBrand?: string | null;
   tiresRearDate?: Date | null;
   tiresRearBrand?: string | null;
+  tiresNextChangeDate?: Date | null;
+  
+  // Insurance Extended Information
+  insuranceHasMixedCoverage?: boolean | null;
+  
+  // Service Tracking
+  lastServiceDate?: Date | null;
+  lastServiceMileage?: number | null;
+  nextServiceMileage?: number | null;
   
   // Notes
   notes?: string | null;

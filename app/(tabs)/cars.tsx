@@ -19,6 +19,7 @@ import { Colors, Typography, Shadows, Glass } from '../../utils/design-system';
 import { smoothScrollConfig } from '../../utils/animations';
 import { VehicleService } from '../../services/vehicle.service';
 import { Vehicle, VehicleStatus } from '../../models/vehicle.interface';
+import { calculateExpiryUrgency, calculateServiceUrgency } from '../../utils/maintenance-urgency';
 
 const { width } = Dimensions.get('window');
 const CARD_MARGIN = 8;
@@ -196,6 +197,14 @@ export default function CarsScreen() {
           }
           
           if (gridStyle === 'list') {
+            // Calculate maintenance urgencies
+            const kteoUrgency = calculateExpiryUrgency(vehicle.kteoExpiryDate);
+            const tiresUrgency = calculateExpiryUrgency(vehicle.tiresNextChangeDate);
+            const insuranceUrgency = calculateExpiryUrgency(vehicle.insuranceExpiryDate);
+            const serviceUrgency = calculateServiceUrgency(vehicle.currentMileage, vehicle.nextServiceMileage);
+            const hasUrgentMaintenance = [kteoUrgency, tiresUrgency, insuranceUrgency, serviceUrgency]
+              .some(u => u.level === 'expired' || u.level === 'critical' || u.level === 'warning');
+            
             return (
               <TouchableOpacity 
                 style={[s.listCard, { width: config.cardWidth }]} 
@@ -204,10 +213,43 @@ export default function CarsScreen() {
               >
                 <View style={s.listRow}>
                   <View style={s.listLeft}>
-                    <Text style={s.listName} numberOfLines={1}>{vehicle.make} {vehicle.model}</Text>
+                    <View style={s.listNameRow}>
+                      <Text style={s.listName} numberOfLines={1}>{vehicle.make} {vehicle.model}</Text>
+                      {hasUrgentMaintenance && (
+                        <Ionicons name="warning" size={16} color="#FF9500" style={s.warningIcon} />
+                      )}
+                    </View>
                     <Text style={s.listDetail}>{vehicle.licensePlate} • {vehicle.year}</Text>
                     {vehicle.color && <Text style={s.listDetail}>Χρώμα: {vehicle.color}</Text>}
                     {vehicle.category && <Text style={s.listDetail}>Κατηγορία: {vehicle.category}</Text>}
+                    {hasUrgentMaintenance && (
+                      <View style={s.maintenanceIndicators}>
+                        {(kteoUrgency.level === 'expired' || kteoUrgency.level === 'critical' || kteoUrgency.level === 'warning') && (
+                          <View style={s.maintenanceChip}>
+                            <Ionicons name="checkmark-circle" size={12} color={kteoUrgency.color} />
+                            <Text style={[s.maintenanceChipText, { color: kteoUrgency.color }]}>KTEO</Text>
+                          </View>
+                        )}
+                        {(insuranceUrgency.level === 'expired' || insuranceUrgency.level === 'critical' || insuranceUrgency.level === 'warning') && (
+                          <View style={s.maintenanceChip}>
+                            <Ionicons name="shield-checkmark" size={12} color={insuranceUrgency.color} />
+                            <Text style={[s.maintenanceChipText, { color: insuranceUrgency.color }]}>Ασφάλεια</Text>
+                          </View>
+                        )}
+                        {(tiresUrgency.level === 'expired' || tiresUrgency.level === 'critical' || tiresUrgency.level === 'warning') && (
+                          <View style={s.maintenanceChip}>
+                            <Ionicons name="ellipse" size={12} color={tiresUrgency.color} />
+                            <Text style={[s.maintenanceChipText, { color: tiresUrgency.color }]}>Λάστιχα</Text>
+                          </View>
+                        )}
+                        {(serviceUrgency.level === 'expired' || serviceUrgency.level === 'critical' || serviceUrgency.level === 'warning') && (
+                          <View style={s.maintenanceChip}>
+                            <Ionicons name="construct" size={12} color={serviceUrgency.color} />
+                            <Text style={[s.maintenanceChipText, { color: serviceUrgency.color }]}>Σέρβις</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
                   </View>
                   <View style={s.listRight}>
                     <View style={[s.listBadge, { backgroundColor: getStatusColor(vehicle.status) + '15' }]}>
@@ -393,6 +435,33 @@ const s = StyleSheet.create({
   },
   listDeleteButton: { 
     padding: 4 
+  },
+  listNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  warningIcon: {
+    marginLeft: 6,
+  },
+  maintenanceIndicators: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  maintenanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    gap: 3,
+  },
+  maintenanceChipText: {
+    fontSize: 9,
+    fontWeight: '600',
   },
   
   empty: { 

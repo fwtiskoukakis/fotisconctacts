@@ -28,10 +28,15 @@ function convertRowToVehicle(row: any): Vehicle {
     insuranceExpiryDate: row.insurance_expiry_date ? new Date(row.insurance_expiry_date) : null,
     insuranceCompany: row.insurance_company,
     insurancePolicyNumber: row.insurance_policy_number,
+    insuranceHasMixedCoverage: row.insurance_has_mixed_coverage,
     tiresFrontDate: row.tires_front_date ? new Date(row.tires_front_date) : null,
     tiresFrontBrand: row.tires_front_brand,
     tiresRearDate: row.tires_rear_date ? new Date(row.tires_rear_date) : null,
     tiresRearBrand: row.tires_rear_brand,
+    tiresNextChangeDate: row.tires_next_change_date ? new Date(row.tires_next_change_date) : null,
+    lastServiceDate: row.last_service_date ? new Date(row.last_service_date) : null,
+    lastServiceMileage: row.last_service_mileage,
+    nextServiceMileage: row.next_service_mileage,
     notes: row.notes,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
@@ -58,10 +63,15 @@ function convertVehicleToInsert(vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'upd
     insurance_expiry_date: vehicle.insuranceExpiryDate ? vehicle.insuranceExpiryDate.toISOString().split('T')[0] : null,
     insurance_company: vehicle.insuranceCompany,
     insurance_policy_number: vehicle.insurancePolicyNumber,
+    insurance_has_mixed_coverage: vehicle.insuranceHasMixedCoverage,
     tires_front_date: vehicle.tiresFrontDate ? vehicle.tiresFrontDate.toISOString().split('T')[0] : null,
     tires_front_brand: vehicle.tiresFrontBrand,
     tires_rear_date: vehicle.tiresRearDate ? vehicle.tiresRearDate.toISOString().split('T')[0] : null,
     tires_rear_brand: vehicle.tiresRearBrand,
+    tires_next_change_date: vehicle.tiresNextChangeDate ? vehicle.tiresNextChangeDate.toISOString().split('T')[0] : null,
+    last_service_date: vehicle.lastServiceDate ? vehicle.lastServiceDate.toISOString().split('T')[0] : null,
+    last_service_mileage: vehicle.lastServiceMileage,
+    next_service_mileage: vehicle.nextServiceMileage,
     notes: vehicle.notes,
   };
 }
@@ -169,6 +179,11 @@ export class VehicleService {
       ...(updates.tiresFrontBrand !== undefined && { tires_front_brand: updates.tiresFrontBrand }),
       ...(updates.tiresRearDate !== undefined && { tires_rear_date: updates.tiresRearDate ? updates.tiresRearDate.toISOString().split('T')[0] : null }),
       ...(updates.tiresRearBrand !== undefined && { tires_rear_brand: updates.tiresRearBrand }),
+      ...(updates.tiresNextChangeDate !== undefined && { tires_next_change_date: updates.tiresNextChangeDate ? updates.tiresNextChangeDate.toISOString().split('T')[0] : null }),
+      ...(updates.insuranceHasMixedCoverage !== undefined && { insurance_has_mixed_coverage: updates.insuranceHasMixedCoverage }),
+      ...(updates.lastServiceDate !== undefined && { last_service_date: updates.lastServiceDate ? updates.lastServiceDate.toISOString().split('T')[0] : null }),
+      ...(updates.lastServiceMileage !== undefined && { last_service_mileage: updates.lastServiceMileage }),
+      ...(updates.nextServiceMileage !== undefined && { next_service_mileage: updates.nextServiceMileage }),
       ...(updates.notes !== undefined && { notes: updates.notes }),
     };
 
@@ -333,6 +348,78 @@ export class VehicleService {
       console.error('Error getting vehicles with updated availability:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get vehicles sorted by KTEO expiry date (soonest first)
+   */
+  static async getVehiclesSortedByKTEO(): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('cars')
+      .select('*')
+      .not('kteo_expiry_date', 'is', null)
+      .order('kteo_expiry_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching vehicles sorted by KTEO:', error);
+      throw new Error(`Failed to fetch vehicles: ${error.message}`);
+    }
+
+    return data ? data.map(convertRowToVehicle) : [];
+  }
+
+  /**
+   * Get vehicles sorted by insurance expiry date (soonest first)
+   */
+  static async getVehiclesSortedByInsurance(): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('cars')
+      .select('*')
+      .not('insurance_expiry_date', 'is', null)
+      .order('insurance_expiry_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching vehicles sorted by insurance:', error);
+      throw new Error(`Failed to fetch vehicles: ${error.message}`);
+    }
+
+    return data ? data.map(convertRowToVehicle) : [];
+  }
+
+  /**
+   * Get vehicles sorted by tire change date (soonest first)
+   */
+  static async getVehiclesSortedByTires(): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('cars')
+      .select('*')
+      .not('tires_next_change_date', 'is', null)
+      .order('tires_next_change_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching vehicles sorted by tires:', error);
+      throw new Error(`Failed to fetch vehicles: ${error.message}`);
+    }
+
+    return data ? data.map(convertRowToVehicle) : [];
+  }
+
+  /**
+   * Get vehicles sorted by service needs (soonest mileage first)
+   */
+  static async getVehiclesSortedByService(): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('cars')
+      .select('*')
+      .not('next_service_mileage', 'is', null)
+      .order('next_service_mileage', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching vehicles sorted by service:', error);
+      throw new Error(`Failed to fetch vehicles: ${error.message}`);
+    }
+
+    return data ? data.map(convertRowToVehicle) : [];
   }
 }
 
